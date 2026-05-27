@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RoamSentinel</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Roaming endpoint defense</p>
+      <h1>RoamSentinel</h1>
+    </div>
+    <div class="status-strip">
+      <span id="adminState" class="pill">Admin check</span>
+      <span id="updatedAt" class="muted">Waiting for telemetry</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="metrics" aria-label="System summary">
+      <article class="metric">
+        <span>Network flows</span>
+        <strong id="connectionCount">0</strong>
+      </article>
+      <article class="metric">
+        <span>Workload</span>
+        <strong id="processCount">0</strong>
+      </article>
+      <article class="metric">
+        <span>Memory used</span>
+        <strong id="memoryUsed">0%</strong>
+      </article>
+      <article class="metric">
+        <span>Persistence</span>
+        <strong id="startupCount">0</strong>
+      </article>
+      <article class="metric">
+        <span>Open findings</span>
+        <strong id="alertCount">0</strong>
+      </article>
+    </section>
+
+    <section class="workbench">
+      <aside class="panel side">
+        <h2>Control Plane</h2>
+        <div class="defender-grid">
+          <span>Service</span><strong id="defenderService">Unknown</strong>
+          <span>Antivirus</span><strong id="defenderAv">Unknown</strong>
+          <span>Real-time</span><strong id="defenderRealtime">Unknown</strong>
+          <span>Signatures</span><strong id="defenderSignature">Unknown</strong>
+        </div>
+
+        <div class="actions">
+          <button id="quickScan" type="button">Quick scan</button>
+          <button id="fullScan" type="button">Full scan</button>
+          <button id="deepScan" type="button">Deep scan</button>
+          <button id="reviewLogs" type="button">Review logs</button>
+        </div>
+
+        <form id="blockForm" class="stack">
+          <label for="ipInput">Block remote IP</label>
+          <div class="inline">
+            <input id="ipInput" name="ip" autocomplete="off" placeholder="203.0.113.10">
+            <button type="submit">Block</button>
+          </div>
+        </form>
+
+        <div class="stack">
+          <label>Agent Access</label>
+          <button id="enforceAgents" type="button">Block unapproved agents</button>
+        </div>
+
+        <p id="actionMessage" class="message" role="status"></p>
+      </aside>
+
+      <section class="panel main-panel">
+        <nav class="tabs" aria-label="Views">
+          <button class="tab active" data-view="alerts" type="button">Posture</button>
+          <button class="tab" data-view="performance" type="button">Load</button>
+          <button class="tab" data-view="connections" type="button">Traffic</button>
+          <button class="tab" data-view="processes" type="button">Workload</button>
+          <button class="tab" data-view="startup" type="button">Persistence</button>
+          <button class="tab" data-view="agents" type="button">Access</button>
+          <button class="tab" data-view="logs" type="button">Review</button>
+          <button class="tab" data-view="policies" type="button">Rules</button>
+        </nav>
+
+        <div id="alerts" class="view active">
+          <div class="posture-grid">
+            <section>
+              <span>Posture</span>
+              <strong id="postureState">Collecting</strong>
+            </section>
+            <section>
+              <span>High priority</span>
+              <strong id="highFindingCount">0</strong>
+            </section>
+            <section>
+              <span>Medium priority</span>
+              <strong id="mediumFindingCount">0</strong>
+            </section>
+            <section>
+              <span>Defender</span>
+              <strong id="defenderPosture">Unknown</strong>
+            </section>
+          </div>
+          <div class="view-toolbar">
+            <h2>Triage Queue</h2>
+            <button type="button" data-jump-view="logs">Review evidence</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Severity</th><th>Category</th><th>Title</th><th>Detail</th><th>Time</th></tr></thead>
+              <tbody id="alertsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="connections" class="view">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Risk</th><th>Process</th><th>PID</th><th>Protocol</th><th>Remote</th><th>State</th><th>Reason</th></tr></thead>
+              <tbody id="connectionsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="performance" class="view">
+          <div class="resource-strip">
+            <div>
+              <span>RAM</span>
+              <strong id="ramText">Waiting</strong>
+              <div class="bar"><i id="ramBar"></i></div>
+            </div>
+            <div>
+              <span>Heavy memory processes</span>
+              <strong id="heavyMemoryCount">0</strong>
+            </div>
+            <div>
+              <span>High CPU processes</span>
+              <strong id="heavyCpuCount">0</strong>
+            </div>
+          </div>
+          <div class="split-tables">
+            <section>
+              <h2>Top Memory</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Name</th><th>PID</th><th>Working set</th><th>Private</th><th>CPU</th><th>Action</th></tr></thead>
+                  <tbody id="topMemoryBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <h2>Top CPU</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Name</th><th>PID</th><th>CPU</th><th>Working set</th><th>Threads</th><th>Action</th></tr></thead>
+                  <tbody id="topCpuBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div id="processes" class="view">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Signal</th><th>Executable</th><th>PID</th><th>CPU</th><th>Working set</th><th>Private</th><th>Threads</th><th>Handles</th><th>Flows</th><th>Path</th><th>Action</th></tr></thead>
+              <tbody id="processesBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="startup" class="view">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Risk</th><th>Name</th><th>Source</th><th>Command</th></tr></thead>
+              <tbody id="startupBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="agents" class="view">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Status</th><th>Name</th><th>PID</th><th>Connections</th><th>Path</th><th>Action</th></tr></thead>
+              <tbody id="agentsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="logs" class="view">
+          <div class="view-toolbar">
+            <h2>Review Logs</h2>
+            <button id="purgeLogs" type="button">Purge reviewed logs</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Severity</th><th>Category</th><th>Title</th><th>Detail</th></tr></thead>
+              <tbody id="logsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="policies" class="view">
+          <div class="policy-grid">
+            <section>
+              <h2>Active Policies</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Policy</th><th>Detail</th></tr></thead>
+                  <tbody id="policyRulesBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <h2>Authorized Agents</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Executable path</th></tr></thead>
+                  <tbody id="authorizedAgentsBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <h2>Blocked Agents</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Executable path</th><th>Action</th></tr></thead>
+                  <tbody id="blockedAgentsBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <h2>Blocked IPs</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>IP</th><th>Blocked</th><th>Action</th></tr></thead>
+                  <tbody id="blockedIpsBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

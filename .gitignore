@@ -1,0 +1,23 @@
+# Build output
+bin/
+obj/
+
+# Local runtime data
+data/
+*.log
+*.err.log
+
+# User/editor state
+.vs/
+.vscode/
+*.user
+*.suo
+
+# OS metadata
+Thumbs.db
+Desktop.ini
+desktop.ini
+
+# Local publishing artifacts
+publish/
+artifacts/
