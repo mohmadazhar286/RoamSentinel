@@ -1,0 +1,11 @@
+#!/usr/bin/env sh
+# RoamSentinel CodeGate pre-receive hook for a Windows-hosted Git repository.
+# Copy this file to <bare-repo>/hooks/pre-receive and make it executable.
+# It calls the PowerShell helper, records audit evidence, and blocks pushes
+# when CodeGate returns a block verdict.
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass \
+  -File "C:/Program Files/RoamSentinel/scripts/Invoke-RoamSentinelCodeGateGitHook.ps1" \
+  -Repository "$(pwd)" \
+  -Mode pre-receive \
+  -PolicyPath "$(pwd)/hooks/roamsentinel-codegate.policy.json"

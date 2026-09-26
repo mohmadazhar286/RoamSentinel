@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <AssemblyName>RoamSentinel</AssemblyName>
+    <RootNamespace>RoamSentinel</RootNamespace>
+    <Version>0.20.0</Version>
+    <AssemblyVersion>0.20.0.0</AssemblyVersion>
+    <FileVersion>0.20.0.0</FileVersion>
+    <InformationalVersion>0.20.0-preview</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>RoamSentinel</Product>
+    <Title>RoamSentinel Endpoint Security Platform</Title>
+    <AssemblyTitle>RoamSentinel Endpoint Security Platform</AssemblyTitle>
+    <PackageId>RoamSentinel</PackageId>
+    <Description>Local-first Windows endpoint security and AI-agent governance.</Description>
+    <Company>RoamSentinel</Company>
+    <Copyright>Copyright (c) 2026. All rights reserved.</Copyright>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="tests\**\*.cs" />
+    <Compile Remove="Console\**\*.cs" />
+    <Content Remove="tests\**\*;artifacts\**\*;data\**\*" />
+    <Content Remove="Console\**\*" />
+    <None Remove="tests\**\*;artifacts\**\*;data\**\*;Console\**\*" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="public\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="scripts\Invoke-RoamSentinelCodeGateGitHook.ps1;scripts\Install-CodeGateGitHook.ps1;scripts\Approve-CodeGateGitHookPolicy.ps1;scripts\Test-CodeGateGitHookPolicy.ps1;scripts\Invoke-RoamSentinelEvidenceExport.ps1;scripts\Invoke-OfflineVmReleaseRehearsal.ps1;scripts\Test-OfflineVmReadiness.ps1;scripts\Register-RoamSentinelMobileDevice.ps1;scripts\Submit-RoamSentinelMobileHeartbeat.ps1;scripts\Invoke-RoamSentinelStagingGate.ps1;scripts\git-hooks\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

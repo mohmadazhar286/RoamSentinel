@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# RoamSentinel CodeGate post-receive hook for audit-only recording.
+# Copy this file to <bare-repo>/hooks/post-receive and make it executable.
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass \
+  -File "C:/Program Files/RoamSentinel/scripts/Invoke-RoamSentinelCodeGateGitHook.ps1" \
+  -Repository "$(pwd)" \
+  -Mode post-receive \
+  -PolicyPath "$(pwd)/hooks/roamsentinel-codegate.policy.json"

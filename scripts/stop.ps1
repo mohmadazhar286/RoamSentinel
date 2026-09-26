@@ -6,9 +6,13 @@ $listeners = Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort 5117 |
 
 foreach ($processId in $listeners) {
     $process = Get-Process -Id $processId
-    if ($process.ProcessName -in @("PcGuardian", "RoamSentinel") -or $process.Path -like "*\PcGuardian\*" -or $process.Path -like "*\RoamSentinel\*") {
-        Stop-Process -Id $processId -Force
-        Write-Host "Stopped RoamSentinel process $processId."
+    if ($process.ProcessName -eq "RoamSentinel" -or $process.Path -like "*\RoamSentinel\*") {
+        try {
+            Stop-Process -Id $processId -Force -ErrorAction Stop
+            Write-Host "Stopped RoamSentinel process $processId."
+        } catch {
+            Write-Warning "Could not stop RoamSentinel process $processId. Run this script from an elevated PowerShell session or stop the RoamSentinel service."
+        }
     }
 }
 

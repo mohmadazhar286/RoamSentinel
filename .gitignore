@@ -21,3 +21,14 @@ desktop.ini
 # Local publishing artifacts
 publish/
 artifacts/
+
+# Test output
+TestResults/
+*.trx
+coverage/
+coverage.*
+
+# Local secret files
+.env
+.env.*
+!.env.example

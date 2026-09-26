@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/tests/">
+    <Project Path="tests/RoamSentinel.Tests/RoamSentinel.Tests.csproj" />
+  </Folder>
+  <Project Path="RoamSentinel.csproj" />
+  <Project Path="Console/RoamSentinel.Console.csproj" />
+</Solution>

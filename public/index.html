@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RoamSentinel Personal Protection</title>
+  <link rel="stylesheet" href="/styles.css?v=0217">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand-row">
+      <div class="rs-logo" aria-label="RS logo placeholder">RS</div>
+      <div>
+        <p class="eyebrow">RoamSentinel personal protection utility</p>
+        <h1>Device Protection Center</h1>
+      </div>
+    </div>
+    <div class="status-strip">
+      <span id="consoleMode" class="pill">Mode: Browser Console</span>
+        <span class="pill">Agent: Local Service</span>
+      <span id="adminState" class="pill">Admin check</span>
+      <span id="updatedAt" class="muted">Waiting for telemetry</span>
+      <button id="themeToggle" class="theme-toggle" type="button">Theme: System</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="metrics" aria-label="System summary">
+      <article class="metric">
+        <span>Outbound flows</span>
+        <strong id="connectionCount">0</strong>
+      </article>
+      <article class="metric">
+        <span>Active processes</span>
+        <strong id="processCount">0</strong>
+      </article>
+      <article class="metric">
+        <span>System load</span>
+        <strong id="memoryUsed">0%</strong>
+      </article>
+      <article class="metric">
+        <span>Persistence</span>
+        <strong id="startupCount">0</strong>
+      </article>
+      <article class="metric">
+        <span>Needs review</span>
+        <strong id="alertCount">0</strong>
+      </article>
+    </section>
+
+    <section class="workbench">
+      <aside class="panel side">
+        <h2>Protection Controls</h2>
+        <form id="operatorForm" class="stack operator-lock">
+          <label for="operatorToken">Response authorization</label>
+          <div class="inline">
+            <input id="operatorToken" type="password" autocomplete="off" placeholder="Operator token">
+            <button type="submit">Unlock</button>
+          </div>
+          <span id="operatorState" class="muted">Locked for this browser session</span>
+        </form>
+        <div class="defender-grid">
+          <span>Malware service</span><strong id="defenderService">Unknown</strong>
+          <span>Scan engine</span><strong id="defenderAv">Unknown</strong>
+          <span>Real-time guard</span><strong id="defenderRealtime">Unknown</strong>
+          <span>Signatures</span><strong id="defenderSignature">Unknown</strong>
+        </div>
+
+        <div class="actions">
+          <button id="quickScan" type="button">Quick scan</button>
+          <button id="fullScan" type="button">Full scan</button>
+          <button id="deepScan" type="button">Deep scan</button>
+          <button id="reviewLogs" type="button">Review logs</button>
+        </div>
+
+        <form id="blockForm" class="stack">
+          <label for="ipInput">Block remote IP</label>
+          <div class="inline">
+            <input id="ipInput" name="ip" autocomplete="off" placeholder="203.0.113.10">
+            <button type="submit">Block</button>
+          </div>
+        </form>
+
+        <form id="quarantineForm" class="stack">
+          <label for="quarantinePath">File malware check</label>
+          <div class="inline">
+            <input id="quarantinePath" name="path" autocomplete="off" placeholder="C:\Users\...\file.exe">
+            <button type="submit">Scan</button>
+          </div>
+        </form>
+
+        <div class="stack">
+          <label>App Data Access</label>
+          <button id="enforceAgents" type="button">Block unapproved apps</button>
+        </div>
+
+        <p id="actionMessage" class="message" role="status"></p>
+      </aside>
+
+      <section class="panel main-panel">
+        <nav class="workspace-nav" aria-label="Module workspaces">
+          <button class="workspace-tab active" data-workspace="protect" type="button">
+            <span>Protect</span>
+            <small>Device posture</small>
+          </button>
+          <button class="workspace-tab" data-workspace="codegate" type="button">
+            <span>CodeGate</span>
+            <small>Deployments</small>
+          </button>
+          <button class="workspace-tab" data-workspace="devices" type="button">
+            <span>Devices</span>
+            <small>PC & mobile</small>
+          </button>
+          <button class="workspace-tab" data-workspace="govern" type="button">
+            <span>Govern</span>
+            <small>Agents & audit</small>
+          </button>
+          <button class="workspace-tab" data-workspace="respond" type="button">
+            <span>Respond</span>
+            <small>History</small>
+          </button>
+          <button class="workspace-tab" data-workspace="admin" type="button">
+            <span>Admin</span>
+            <small>Policy</small>
+          </button>
+        </nav>
+        <nav class="tabs" aria-label="Workspace views">
+          <button class="tab active" data-view="overview" type="button">Protection Overview</button>
+          <button class="tab" data-view="deviceIntegrity" type="button" hidden>Device Integrity</button>
+          <button class="tab" data-view="mobileDevices" type="button" hidden>Devices</button>
+          <button class="tab" data-view="appActivity" type="button" hidden>App Data Activity</button>
+          <button class="tab" data-view="malwareGuard" type="button" hidden>Malware Protection</button>
+          <button class="tab" data-view="components" type="button" hidden>Components</button>
+          <button class="tab" data-view="processes" type="button" hidden>Live Processes</button>
+          <button class="tab" data-view="connections" type="button" hidden>Outbound Activity</button>
+          <button class="tab" data-view="alerts" type="button" hidden>Alerts</button>
+          <button class="tab" data-view="mitre" type="button" hidden>MITRE ATT&amp;CK</button>
+          <button class="tab" data-view="agents" type="button" hidden>App/Agent Access</button>
+          <button class="tab" data-view="threatIntel" type="button" hidden>Threat Intel</button>
+          <button class="tab" data-view="responseHistory" type="button" hidden>Response History</button>
+          <button class="tab" data-view="settings" type="button" hidden>Settings</button>
+          <button class="tab" data-view="auditLog" type="button" hidden>Audit Log</button>
+        </nav>
+
+        <div id="overview" class="view active">
+          <div class="posture-grid">
+            <section>
+              <span>Posture</span>
+              <strong id="postureState">Collecting</strong>
+            </section>
+            <section>
+              <span>High priority</span>
+              <strong id="highFindingCount">0</strong>
+            </section>
+            <section>
+              <span>Medium priority</span>
+              <strong id="mediumFindingCount">0</strong>
+            </section>
+            <section>
+              <span>Malware protection</span>
+              <strong id="defenderPosture">Unknown</strong>
+            </section>
+          </div>
+          <div class="resource-strip overview-strip">
+            <div><span>Network barrier</span><strong id="overviewFirewall">Collecting</strong></div>
+            <div><span>Watched apps</span><strong id="overviewAgents">0</strong></div>
+            <div><span>Detection risk</span><strong id="overviewRisk">0</strong></div>
+            <div><span>Auto scheduler</span><strong id="overviewScheduler">Checking</strong></div>
+            <div><span>Database</span><strong id="overviewDatabase">Checking</strong></div>
+          </div>
+          <div class="priority-actions">
+            <button type="button" data-jump-view="alerts">Triage Alerts</button>
+            <button type="button" data-jump-view="connections">Who Is Sending Data?</button>
+            <button type="button" data-jump-view="appActivity">Review Apps</button>
+            <button type="button" data-jump-view="malwareGuard">Scan & Malware</button>
+          </div>
+        </div>
+
+        <div id="components" class="view">
+          <div class="component-grid">
+            <section>
+              <div class="view-toolbar"><h2>Product Components</h2></div>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Component</th><th>Surface</th><th>Status</th><th>Capabilities</th></tr></thead>
+                  <tbody id="modulesBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <div class="view-toolbar"><h2>Insider Risk</h2></div>
+              <div class="component-score">
+                <span>Risk score</span>
+                <strong id="insiderRiskScore">0</strong>
+                <small id="insiderRiskSeverity">info</small>
+              </div>
+              <ul id="insiderRiskSignals" class="signal-list"></ul>
+            </section>
+          </div>
+          <div class="view-toolbar"><h2>CodeGate</h2></div>
+          <form id="codeGateForm" class="codegate-panel">
+            <div class="inline">
+              <input id="codeGatePath" name="importPath" autocomplete="off" placeholder="Repository path or file label">
+              <input id="codeGateRevision" name="revision" autocomplete="off" placeholder="Revision">
+              <button type="submit">Analyze</button>
+            </div>
+            <textarea id="codeGateSource" name="source" rows="8" spellcheck="false" placeholder="Paste code, script, dependency file, or change text"></textarea>
+          </form>
+          <div id="codeGateResult" class="codegate-result muted">No scan submitted.</div>
+          <div class="view-toolbar codegate-audit-toolbar">
+            <h2>CodeGate Audit Review</h2>
+            <div class="button-row">
+              <button id="exportCodeGateSubmissions" type="button">Export submissions CSV</button>
+              <button id="exportCodeGateGitPushes" type="button">Export git pushes CSV</button>
+              <button id="exportCodeGateBundles" type="button">Export bundles CSV</button>
+            </div>
+          </div>
+          <div class="codegate-filters" aria-label="CodeGate audit filters">
+            <label>
+              <span>Verdict</span>
+              <select id="codeGateVerdictFilter">
+                <option value="">All verdicts</option>
+                <option value="allow">Allow</option>
+                <option value="warn">Warn</option>
+                <option value="block">Block</option>
+              </select>
+            </label>
+            <label>
+              <span>Repository</span>
+              <input id="codeGateRepositoryFilter" autocomplete="off" placeholder="Repository name">
+            </label>
+            <label>
+              <span>Actor</span>
+              <input id="codeGateActorFilter" autocomplete="off" placeholder="Pusher or operator">
+            </label>
+            <label>
+              <span>Bundle type</span>
+              <select id="codeGateBundleTypeFilter">
+                <option value="">All bundle types</option>
+                <option value="rules">Rules</option>
+                <option value="advisories">Advisories</option>
+                <option value="ioc">IOC</option>
+              </select>
+            </label>
+          </div>
+          <div id="codeGateDetailPanel" class="codegate-detail muted">
+            Select a CodeGate submission or Git push row to review evidence.
+          </div>
+          <div class="view-toolbar"><h2>Recent CodeGate Submissions</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Time</th><th>Verdict</th><th>Risk</th><th>Source</th><th>Path</th><th>Findings</th><th>Evidence</th></tr></thead>
+            <tbody id="codeGateSubmissionsBody"></tbody>
+          </table></div>
+          <div class="view-toolbar"><h2>Git Push Traceability</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Time</th><th>Repository</th><th>Branch</th><th>Actor</th><th>Verdict</th><th>Files</th><th>Evidence</th></tr></thead>
+            <tbody id="codeGateGitPushesBody"></tbody>
+          </table></div>
+          <div class="view-toolbar"><h2>Offline Bundle Freshness</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Imported</th><th>Type</th><th>Name</th><th>Version</th><th>Generated</th><th>Status</th></tr></thead>
+            <tbody id="codeGateBundlesBody"></tbody>
+          </table></div>
+        </div>
+
+        <div id="alerts" class="view">
+          <div class="view-toolbar">
+            <h2>Triage Queue</h2>
+            <button id="purgeLogs" type="button">Purge reviewed alerts</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Severity</th><th>Category</th><th>Title</th><th>Detail</th><th>Time</th><th>Disposition</th></tr></thead>
+              <tbody id="alertsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="mitre" class="view">
+          <div class="posture-grid">
+            <section>
+              <span>Mapped events</span>
+              <strong id="mitreEventCount">0</strong>
+            </section>
+            <section>
+              <span>Tactics</span>
+              <strong id="mitreTacticCount">0</strong>
+            </section>
+            <section>
+              <span>Techniques</span>
+              <strong id="mitreTechniqueCount">0</strong>
+            </section>
+            <section>
+              <span>Hosts</span>
+              <strong id="mitreHostCount">0</strong>
+            </section>
+          </div>
+          <div class="mitre-filters" aria-label="ATT&CK event filters">
+            <label>
+              <span>Tactic</span>
+              <select id="mitreTacticFilter">
+                <option value="">All tactics</option>
+              </select>
+            </label>
+            <label>
+              <span>Technique</span>
+              <select id="mitreTechniqueFilter">
+                <option value="">All techniques</option>
+              </select>
+            </label>
+            <label>
+              <span>Severity</span>
+              <select id="mitreSeverityFilter">
+                <option value="">All severities</option>
+                <option value="Critical">Critical</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+                <option value="Info">Info</option>
+              </select>
+            </label>
+            <label>
+              <span>Host</span>
+              <select id="mitreHostFilter">
+                <option value="">All hosts</option>
+              </select>
+            </label>
+            <button id="resetMitreFilters" type="button">Reset</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Tactic</th><th>Technique</th><th>Severity</th><th>Host</th><th>Last seen</th><th>Event</th><th>Count</th><th>Mapping</th></tr></thead>
+              <tbody id="mitreEventsBody"></tbody>
+            </table>
+          </div>
+          <div class="view-toolbar">
+            <h2>Technique Coverage</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Technique</th><th>Name</th><th>Primary tactic</th><th>Status</th><th>Replacement</th></tr></thead>
+              <tbody id="mitreCatalogBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="connections" class="view">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Risk</th><th>Process</th><th>PID</th><th>Protocol</th><th>Remote</th><th>State</th><th>Reason</th></tr></thead>
+              <tbody id="connectionsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="deviceIntegrity" class="view">
+          <div class="posture-grid">
+            <section><span>Drivers</span><strong id="integrityDriverCount">0</strong></section>
+            <section><span>Installed software</span><strong id="integritySoftwareCount">0</strong></section>
+            <section><span>Persistence values</span><strong id="integrityPersistenceCount">0</strong></section>
+            <section><span>Services</span><strong id="integrityServiceCount">0</strong></section>
+            <section><span>Scheduled tasks</span><strong id="integrityTaskCount">0</strong></section>
+            <section><span>Network listeners</span><strong id="integrityListenerCount">0</strong></section>
+            <section><span>PowerShell policy</span><strong id="integrityPowerShell">Checking</strong></section>
+          </div>
+          <div class="split-tables">
+            <section>
+              <h2>Drivers</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Name</th><th>State</th><th>Start</th><th>Type</th><th>Path</th></tr></thead>
+                <tbody id="integrityDriversBody"></tbody>
+              </table></div>
+            </section>
+            <section>
+              <h2>Registry Persistence</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Hive</th><th>Key</th><th>Name</th><th>Value</th></tr></thead>
+                <tbody id="integrityPersistenceBody"></tbody>
+              </table></div>
+            </section>
+          </div>
+          <div class="view-toolbar"><h2>Installed Software</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Name</th><th>Version</th><th>Publisher</th><th>Location</th></tr></thead>
+            <tbody id="integritySoftwareBody"></tbody>
+          </table></div>
+          <div class="view-toolbar"><h2>Monitored Files</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Path</th><th>Size</th><th>Modified</th><th>Extension</th></tr></thead>
+            <tbody id="integrityFilesBody"></tbody>
+          </table></div>
+          <div class="split-tables">
+            <section>
+              <h2>Services</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Name</th><th>State</th><th>Start</th><th>Account</th><th>Path</th></tr></thead>
+                <tbody id="integrityServicesBody"></tbody>
+              </table></div>
+            </section>
+            <section>
+              <h2>Scheduled Tasks</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Task</th><th>State</th><th>Enabled</th><th>Command</th><th>Trigger</th></tr></thead>
+                <tbody id="integrityTasksBody"></tbody>
+              </table></div>
+            </section>
+          </div>
+          <div class="split-tables">
+            <section>
+              <h2>Firewall Profiles</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Profile</th><th>Enabled</th><th>Inbound</th><th>Outbound</th><th>Notifications</th></tr></thead>
+                <tbody id="integrityFirewallBody"></tbody>
+              </table></div>
+            </section>
+            <section>
+              <h2>Network Listeners</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Protocol</th><th>Local</th><th>PID</th><th>Process</th><th>Path</th></tr></thead>
+                <tbody id="integrityListenersBody"></tbody>
+              </table></div>
+            </section>
+          </div>
+          <div class="view-toolbar"><h2>Integrity Change Events</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Time</th><th>Entity</th><th>Change</th><th>Key</th><th>Explanation</th></tr></thead>
+            <tbody id="integrityEventsBody"></tbody>
+          </table></div>
+          <div class="view-toolbar"><h2>Device Integrity Findings</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Severity</th><th>Status</th><th>Title</th><th>Entity</th><th>Explanation</th></tr></thead>
+            <tbody id="integrityFindingsBody"></tbody>
+          </table></div>
+        </div>
+
+
+        <div id="mobileDevices" class="view">
+          <div class="posture-grid">
+            <section><span>Enrolled devices</span><strong id="mobileDeviceCount">0</strong></section>
+            <section><span>Mobile findings</span><strong id="mobileFindingCount">0</strong></section>
+            <section><span>Apps indexed</span><strong id="mobileAppCount">0</strong></section>
+            <section><span>Network events</span><strong id="mobileNetworkCount">0</strong></section>
+          </div>
+          <div class="view-toolbar">
+            <div>
+              <h2>MobileBridge</h2>
+              <p id="mobilePolicySummary" class="muted">Waiting for mobile policy.</p>
+            </div>
+            <button id="createMobilePairing" type="button">Create pairing code</button>
+          </div>
+          <p id="mobilePairingCode" class="message" role="status"></p>
+          <div class="operator-note">
+            <strong>Pairing status:</strong>
+            <span>
+              No packaged phone companion is included yet. Use the local
+              enrollment script below or scan the QR payload with a future
+              companion/test client to register against the same MobileBridge
+              API.
+            </span>
+          </div>
+          <div id="mobilePairingQr" class="qr-panel" aria-label="Mobile pairing QR code"></div>
+          <div class="button-row">
+            <button id="copyMobilePairingPayload" type="button" disabled>Copy scan payload</button>
+          </div>
+          <pre id="mobilePairingCommand" class="command-box">Create a pairing code to show the Register-RoamSentinelMobileDevice.ps1 enrollment command.</pre>
+          <div class="view-toolbar"><h2>Devices</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Status</th><th>Device</th><th>Platform</th><th>Last heartbeat</th><th>Risk</th><th>Reason</th></tr></thead>
+            <tbody id="mobileDevicesBody"></tbody>
+          </table></div>
+          <div class="split-tables">
+            <section>
+              <h2>Recent Apps</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Package</th><th>Name</th><th>Version</th><th>Install source</th><th>Risk flags</th></tr></thead>
+                <tbody id="mobileAppsBody"></tbody>
+              </table></div>
+            </section>
+            <section>
+              <h2>Security Findings</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Severity</th><th>Category</th><th>Title</th><th>Entity</th><th>Time</th></tr></thead>
+                <tbody id="mobileFindingsBody"></tbody>
+              </table></div>
+            </section>
+          </div>
+        </div>
+
+        <div id="appActivity" class="view">
+          <div class="posture-grid">
+            <section><span>Installed apps</span><strong id="appActivityInstalledCount">0</strong></section>
+            <section><span>Active now</span><strong id="appActivityActiveCount">0</strong></section>
+            <section><span>Review unused</span><strong id="appActivityUnusedCount">0</strong></section>
+            <section><span>Unused but active</span><strong id="appActivityUnusedActiveCount">0</strong></section>
+          </div>
+          <div class="view-toolbar"><h2>Application Activity</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Recommendation</th><th>Application</th><th>Publisher</th><th>Last use</th><th>Current activity</th><th>Risk</th><th>Reason</th></tr></thead>
+            <tbody id="appActivityBody"></tbody>
+          </table></div>
+        </div>
+
+        <div id="malwareGuard" class="view">
+          <div class="posture-grid">
+            <section><span>Defender AV</span><strong id="malwareDefenderAv">Unknown</strong></section>
+            <section><span>Real-time</span><strong id="malwareDefenderRealtime">Unknown</strong></section>
+            <section><span>Threat history</span><strong id="malwareDetectionCount">0</strong></section>
+            <section><span>Suspicious files</span><strong id="malwareSuspiciousFileCount">0</strong></section>
+          </div>
+          <div class="view-toolbar"><h2>MalwareGuard Capabilities</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Capability</th><th>Status</th><th>Detail</th></tr></thead>
+            <tbody id="malwareCapabilitiesBody"></tbody>
+          </table></div>
+          <div class="split-tables">
+            <section>
+              <h2>Defender Threat History</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Detected</th><th>Threat</th><th>Status</th><th>Resource</th></tr></thead>
+                <tbody id="malwareDetectionsBody"></tbody>
+              </table></div>
+            </section>
+            <section>
+              <h2>Suspicious Files</h2>
+              <div class="table-wrap"><table>
+                <thead><tr><th>Risk</th><th>Path</th><th>SHA-256</th><th>Reason</th></tr></thead>
+                <tbody id="malwareFilesBody"></tbody>
+              </table></div>
+            </section>
+          </div>
+        </div>
+        <div id="processes" class="view">
+          <div class="resource-strip">
+            <div>
+              <span>RAM</span>
+              <strong id="ramText">Waiting</strong>
+              <div class="bar"><i id="ramBar"></i></div>
+            </div>
+            <div>
+              <span>Heavy memory processes</span>
+              <strong id="heavyMemoryCount">0</strong>
+            </div>
+            <div>
+              <span>High CPU processes</span>
+              <strong id="heavyCpuCount">0</strong>
+            </div>
+          </div>
+          <div class="split-tables">
+            <section>
+              <h2>Top Memory</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Name</th><th>PID</th><th>Working set</th><th>Private</th><th>CPU</th><th>Action</th></tr></thead>
+                  <tbody id="topMemoryBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <h2>Top CPU</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Name</th><th>PID</th><th>CPU</th><th>Working set</th><th>Threads</th><th>Action</th></tr></thead>
+                  <tbody id="topCpuBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+          <div class="view-toolbar">
+            <h2>Process Inventory</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Signal</th><th>Executable</th><th>PID</th><th>CPU</th><th>Working set</th><th>Private</th><th>Threads</th><th>Handles</th><th>Flows</th><th>Path</th><th>Action</th></tr></thead>
+              <tbody id="processesBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="settings" class="view">
+          <div class="settings-grid">
+            <section><span>Product</span><strong id="settingProduct">RoamSentinel</strong></section>
+            <section><span>Version</span><strong id="settingVersion">-</strong></section>
+            <section><span>Bind URL</span><strong id="settingBindUrl">-</strong></section>
+            <section><span>Refresh</span><strong id="settingRefresh">-</strong></section>
+            <section><span>Telemetry</span><strong id="settingTelemetry">-</strong></section>
+            <section><span>Auto scheduler</span><strong id="settingScheduler">-</strong></section>
+            <section><span>Retention</span><strong id="settingRetention">-</strong></section>
+            <section><span>Response authorization</span><strong id="settingResponseAuth">-</strong></section>
+            <section><span>Database migration</span><strong id="settingMigration">-</strong></section>
+          </div>
+          <div class="view-toolbar">
+            <div>
+              <h2>Protection Scheduler</h2>
+              <p id="schedulerSummary" class="muted">Waiting for scheduler status.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Task</th><th>Module</th><th>State</th><th>Interval</th><th>Last run</th><th>Next run</th><th>Result</th></tr></thead>
+              <tbody id="schedulerBody"></tbody>
+            </table>
+          </div>
+          <div class="view-toolbar backup-toolbar">
+            <div>
+              <h2>Backup and Export</h2>
+              <p class="muted">Export a consistent SQLite snapshot without credentials or API keys.</p>
+            </div>
+            <button id="exportBackup" type="button" title="Export database backup">Export backup</button>
+          </div>
+          <div class="view-toolbar">
+            <h2>Detection Rules</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Rule</th><th>Category</th><th>Severity</th><th>Weight</th><th>State</th><th>Description</th></tr></thead>
+              <tbody id="ruleSettingsBody"></tbody>
+            </table>
+          </div>
+          <div class="view-toolbar">
+            <h2>Startup Entries</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Risk</th><th>Name</th><th>Source</th><th>Command</th><th>Action</th></tr></thead>
+              <tbody id="startupBody"></tbody>
+            </table>
+          </div>
+          <div class="view-toolbar persistence-heading">
+            <h2>Scheduled Tasks</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Status</th><th>Name</th><th>Path</th><th>Command</th><th>Trigger</th><th>Action</th></tr></thead>
+              <tbody id="scheduledTasksBody"></tbody>
+            </table>
+          </div>
+          <div class="policy-grid">
+            <section>
+              <h2>Active Policies</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Policy</th><th>Detail</th></tr></thead>
+                  <tbody id="policyRulesBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <h2>Authorized Agents</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Executable path</th></tr></thead>
+                  <tbody id="authorizedAgentsBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <h2>Blocked Agents</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Executable path</th><th>Action</th></tr></thead>
+                  <tbody id="blockedAgentsBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <h2>Blocked IPs</h2>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>IP</th><th>Blocked</th><th>Action</th></tr></thead>
+                  <tbody id="blockedIpsBody"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <div id="agents" class="view">
+          <div class="view-toolbar">
+            <h2>AI Agent Governance</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Status</th><th>Agent</th><th>Vendor</th><th>Executable</th><th>First seen</th><th>Last seen</th><th>Network</th><th>Risk</th><th>Reason</th><th>Controls</th></tr></thead>
+              <tbody id="agentsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="threatIntel" class="view">
+          <div class="view-toolbar">
+            <h2>Threat Intelligence</h2>
+          </div>
+          <form id="threatLookupForm" class="query-bar">
+            <input id="threatIndicatorInput" name="indicator" autocomplete="off" placeholder="IP, domain, or SHA-256">
+            <select id="threatIndicatorType" name="indicatorType">
+              <option value="ip">IP address</option>
+              <option value="domain">Domain</option>
+              <option value="file-hash">File hash</option>
+            </select>
+            <button type="submit">Enrich</button>
+          </form>
+          <p id="threatLookupResult" class="message" role="status"></p>
+          <div class="view-toolbar"><h2>Provider Status</h2></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Provider</th><th>Enabled</th><th>Configured</th><th>Indicator types</th></tr></thead>
+              <tbody id="threatProvidersBody"></tbody>
+            </table>
+          </div>
+          <div class="view-toolbar"><h2>Indicators</h2></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Indicator</th><th>Type</th><th>Reputation</th><th>Confidence</th><th>Source</th><th>Last seen</th><th>Description</th></tr></thead>
+              <tbody id="threatIndicatorsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="responseHistory" class="view">
+          <div class="view-toolbar"><h2>Response History</h2></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Requested</th><th>Action</th><th>Target</th><th>Status</th><th>Actor</th><th>Output/Error</th><th>Before</th><th>After</th></tr></thead>
+              <tbody id="responseHistoryBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="auditLog" class="view">
+          <div class="view-toolbar"><h2>Audit Log</h2></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Entity</th><th>Result</th><th>Detail</th></tr></thead>
+              <tbody id="auditLogBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/app.js?v=0215"></script>
+</body>
+</html>
