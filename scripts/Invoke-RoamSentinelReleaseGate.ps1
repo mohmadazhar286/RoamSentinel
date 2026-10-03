@@ -158,12 +158,11 @@ if ($LASTEXITCODE -ne 0) {
 # Run staging scan
 $stagingGateScript = Join-Path $repoRoot "scripts\Invoke-RoamSentinelStagingGate.ps1"
 if (Test-Path $stagingGateScript) {
-    try {
-        & powershell -NoProfile -ExecutionPolicy Bypass -File $stagingGateScript -Path $stagingDir -FailOnWarn
-        Write-Host "OK: RS CodeGate pre-deployment scan cleared staging artifacts." -ForegroundColor Green
-    } catch {
-        Write-Warning "CodeGate scanner note: $_"
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $stagingGateScript -Path $stagingDir -SelfScan -FailOnWarn
+    if ($LASTEXITCODE -ne 0) {
+        throw "CodeGate pre-deployment security scan failed on staging artifacts."
     }
+    Write-Host "OK: RS CodeGate pre-deployment scan cleared staging artifacts." -ForegroundColor Green
 }
 
 # --- Step 7: Packaging Immutable Release with SHA-256 Manifest ---

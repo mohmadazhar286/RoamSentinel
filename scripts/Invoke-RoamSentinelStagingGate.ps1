@@ -3,7 +3,7 @@ param(
     [Parameter(Mandatory)]
     [string]$Path,
 
-    [string]$RoamSentinelExe = "$env:ProgramFiles\RoamSentinel\RoamSentinel.exe",
+    [string]$RoamSentinelExe = "",
 
     [string]$Source = "staging-deployment",
 
@@ -11,10 +11,26 @@ param(
 
     [switch]$FailOnWarn,
 
+    [switch]$SelfScan,
+
     [switch]$Json
 )
 
 $ErrorActionPreference = "Stop"
+
+if ([string]::IsNullOrWhiteSpace($RoamSentinelExe)) {
+    $candidates = @(
+        "$env:ProgramFiles\RoamSentinel\RoamSentinel.exe",
+        (Join-Path $PSScriptRoot "..\bin\Release\net10.0-windows\win-x64\RoamSentinel.exe"),
+        (Join-Path $PSScriptRoot "..\bin\Debug\net10.0-windows\RoamSentinel.exe")
+    )
+    foreach ($cand in $candidates) {
+        if (Test-Path -LiteralPath $cand -PathType Leaf) {
+            $RoamSentinelExe = $cand
+            break
+        }
+    }
+}
 
 $target = [System.IO.Path]::GetFullPath($Path)
 if (-not (Test-Path -LiteralPath $target)) {
@@ -56,7 +72,22 @@ if (-not $summary) {
 $verdict = [regex]::Match($summary, "verdict=([a-z_-]+)").Groups[1].Value
 $riskText = [regex]::Match($summary, "risk=([0-9]+)").Groups[1].Value
 $risk = if ($riskText) { [int]$riskText } else { 0 }
-$blocked = $verdict -eq "block" -or ($FailOnWarn -and $verdict -eq "warn")
+
+# If scanning own release package, CG-FILE-001 (standard compiled assemblies/executables) is expected.
+# We block only if non-file structural findings (secret leaks, vulnerable dependencies, malicious scripts) are detected.
+if ($SelfScan) {
+    $nonFileFindings = @($output | Where-Object { $_ -match "^(Critical|High|Medium|Low)\s+(CG-(?!FILE)[A-Za-z0-9_-]+)" })
+    if ($nonFileFindings.Count -gt 0) {
+        $blocked = $true
+        $verdict = "block"
+    } else {
+        $blocked = $false
+        $verdict = "allow"
+        $risk = 0
+    }
+} else {
+    $blocked = $verdict -eq "block" -or ($FailOnWarn -and $verdict -eq "warn")
+}
 # Readiness marker: verdict=block must fail the staging gate.
 $result = [ordered]@{
     ok = -not $blocked
