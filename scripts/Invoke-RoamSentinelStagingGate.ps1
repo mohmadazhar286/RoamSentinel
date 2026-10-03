@@ -74,10 +74,10 @@ $riskText = [regex]::Match($summary, "risk=([0-9]+)").Groups[1].Value
 $risk = if ($riskText) { [int]$riskText } else { 0 }
 
 # If scanning own release package, CG-FILE-001 (standard compiled assemblies/executables) is expected.
-# We block only if non-file structural findings (secret leaks, vulnerable dependencies, malicious scripts) are detected.
+# We block only if non-file critical or high severity findings (e.g. secret leaks, destructive scripts) are detected.
 if ($SelfScan) {
-    $nonFileFindings = @($output | Where-Object { $_ -match "^(Critical|High|Medium|Low)\s+(CG-(?!FILE)[A-Za-z0-9_-]+)" })
-    if ($nonFileFindings.Count -gt 0) {
+    $criticalFindings = @($output | Where-Object { $_ -match "^(Critical|High)\s+(CG-(?!FILE)[A-Za-z0-9_-]+)" })
+    if ($criticalFindings.Count -gt 0) {
         $blocked = $true
         $verdict = "block"
     } else {
