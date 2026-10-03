@@ -33,7 +33,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
-    <Content Include="scripts\Invoke-RoamSentinelCodeGateGitHook.ps1;scripts\Install-CodeGateGitHook.ps1;scripts\Approve-CodeGateGitHookPolicy.ps1;scripts\Test-CodeGateGitHookPolicy.ps1;scripts\Invoke-RoamSentinelEvidenceExport.ps1;scripts\Invoke-OfflineVmReleaseRehearsal.ps1;scripts\Test-OfflineVmReadiness.ps1;scripts\Register-RoamSentinelMobileDevice.ps1;scripts\Submit-RoamSentinelMobileHeartbeat.ps1;scripts\Invoke-RoamSentinelStagingGate.ps1;scripts\git-hooks\**\*">
+    <Content Include="scripts\Invoke-RoamSentinelCodeGateGitHook.ps1;scripts\Install-CodeGateGitHook.ps1;scripts\Approve-CodeGateGitHookPolicy.ps1;scripts\Test-CodeGateGitHookPolicy.ps1;scripts\Invoke-RoamSentinelEvidenceExport.ps1;scripts\Invoke-OfflineVmReleaseRehearsal.ps1;scripts\Test-OfflineVmReadiness.ps1;scripts\Register-RoamSentinelMobileDevice.ps1;scripts\Submit-RoamSentinelMobileHeartbeat.ps1;scripts\Invoke-RoamSentinelStagingGate.ps1;scripts\Invoke-RoamSentinelReleaseGate.ps1;scripts\git-hooks\**\*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>
