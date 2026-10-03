@@ -34,7 +34,8 @@
   </header>
 
   <main class="layout">
-    <section class="metrics" aria-label="System summary">
+    <!-- Protect Bundle KPIs -->
+    <section class="metrics bundle-kpis" data-kpi-bundle="protect" aria-label="Protect bundle metrics">
       <article class="metric">
         <span>Outbound flows</span>
         <strong id="connectionCount">0</strong>
@@ -54,6 +55,78 @@
       <article class="metric">
         <span>Needs review</span>
         <strong id="alertCount">0</strong>
+      </article>
+    </section>
+
+    <!-- Govern Bundle KPIs -->
+    <section class="metrics bundle-kpis" data-kpi-bundle="govern" aria-label="Govern bundle metrics" hidden>
+      <article class="metric">
+        <span>MCP Invocations</span>
+        <strong id="kpiMcpTotal">0</strong>
+      </article>
+      <article class="metric">
+        <span>Blocked Tools</span>
+        <strong id="kpiMcpBlocked">0</strong>
+      </article>
+      <article class="metric">
+        <span>CodeGate Scans</span>
+        <strong id="kpiCodeGateScans">0</strong>
+      </article>
+      <article class="metric">
+        <span>Gate Violations</span>
+        <strong id="kpiCodeGateBlocked">0</strong>
+      </article>
+      <article class="metric">
+        <span>MITRE Detections</span>
+        <strong id="kpiMitreEvents">0</strong>
+      </article>
+    </section>
+
+    <!-- DevOps Bundle KPIs -->
+    <section class="metrics bundle-kpis" data-kpi-bundle="devops" aria-label="DevOps bundle metrics" hidden>
+      <article class="metric">
+        <span>Managed Apps</span>
+        <strong id="kpiDevopsApps">1</strong>
+      </article>
+      <article class="metric">
+        <span>Push Sync</span>
+        <strong id="kpiDevopsPush">Healthy</strong>
+      </article>
+      <article class="metric">
+        <span>Pull Sync</span>
+        <strong id="kpiDevopsPull">Healthy</strong>
+      </article>
+      <article class="metric">
+        <span>Active Claims</span>
+        <strong id="kpiDevopsClaims">0</strong>
+      </article>
+      <article class="metric">
+        <span>Active Cycle</span>
+        <strong id="kpiDevopsCycle">C01</strong>
+      </article>
+    </section>
+
+    <!-- Admin Bundle KPIs -->
+    <section class="metrics bundle-kpis" data-kpi-bundle="admin" aria-label="Admin bundle metrics" hidden>
+      <article class="metric">
+        <span>Companion Devices</span>
+        <strong id="kpiAdminDevices">0</strong>
+      </article>
+      <article class="metric">
+        <span>Device Findings</span>
+        <strong id="kpiAdminFindings">0</strong>
+      </article>
+      <article class="metric">
+        <span>Tracked Apps</span>
+        <strong id="kpiAdminApps">0</strong>
+      </article>
+      <article class="metric">
+        <span>Scheduler Cadence</span>
+        <strong id="kpiAdminScheduler">Ready</strong>
+      </article>
+      <article class="metric">
+        <span>Auth Mode</span>
+        <strong id="kpiAdminAuth">Viewer</strong>
       </article>
     </section>
 

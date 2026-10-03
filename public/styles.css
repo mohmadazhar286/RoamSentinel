@@ -203,6 +203,10 @@ h2 {
   margin-bottom: 18px;
 }
 
+.bundle-kpis[hidden] {
+  display: none !important;
+}
+
 .metric {
   position: relative;
   min-height: 100px;
@@ -524,43 +528,51 @@ textarea {
 
 .workspace-nav {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0;
-  padding: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface);
+  background: var(--surface-subtle);
 }
 
 .workspace-tab {
   display: grid;
   justify-items: start;
   gap: 2px;
-  min-height: 56px;
-  padding: 9px 12px;
-  border-color: transparent;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  background: transparent;
+  background: var(--surface);
   color: var(--muted);
   box-shadow: none;
   text-align: left;
+  transition: all 150ms ease;
+}
+
+.workspace-tab:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line));
+  background: var(--surface-soft);
 }
 
 .workspace-tab span {
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .workspace-tab small {
   color: var(--muted);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   text-transform: uppercase;
 }
 
 .workspace-tab.active {
-  border-color: color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent);
+  box-shadow: 0 2px 6px rgba(7, 95, 112, 0.08);
 }
 
 .workspace-tab.active span,
@@ -572,9 +584,9 @@ textarea {
   display: flex;
   flex-wrap: nowrap;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 10px 14px;
   border-bottom: 1px solid var(--line);
-  background: var(--surface-soft);
+  background: var(--surface);
   overflow-x: auto;
   scrollbar-width: thin;
 }

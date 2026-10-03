@@ -202,7 +202,22 @@ const els = {
   devopsPushTableBody: document.querySelector("#devopsPushTableBody"),
   devopsClaimsBody: document.querySelector("#devopsClaimsBody"),
   devopsCyclesBody: document.querySelector("#devopsCyclesBody"),
-  devopsReportsList: document.querySelector("#devopsReportsList")
+  devopsReportsList: document.querySelector("#devopsReportsList"),
+  kpiMcpTotal: document.querySelector("#kpiMcpTotal"),
+  kpiMcpBlocked: document.querySelector("#kpiMcpBlocked"),
+  kpiCodeGateScans: document.querySelector("#kpiCodeGateScans"),
+  kpiCodeGateBlocked: document.querySelector("#kpiCodeGateBlocked"),
+  kpiMitreEvents: document.querySelector("#kpiMitreEvents"),
+  kpiDevopsApps: document.querySelector("#kpiDevopsApps"),
+  kpiDevopsPush: document.querySelector("#kpiDevopsPush"),
+  kpiDevopsPull: document.querySelector("#kpiDevopsPull"),
+  kpiDevopsClaims: document.querySelector("#kpiDevopsClaims"),
+  kpiDevopsCycle: document.querySelector("#kpiDevopsCycle"),
+  kpiAdminDevices: document.querySelector("#kpiAdminDevices"),
+  kpiAdminFindings: document.querySelector("#kpiAdminFindings"),
+  kpiAdminApps: document.querySelector("#kpiAdminApps"),
+  kpiAdminScheduler: document.querySelector("#kpiAdminScheduler"),
+  kpiAdminAuth: document.querySelector("#kpiAdminAuth")
 };
 
 document.querySelector(".workspace-nav")?.addEventListener("click", (event) => {
@@ -305,6 +320,11 @@ function updateWorkspaceShell() {
   if (workbenchEl) {
     workbenchEl.classList.toggle("workspace-full-width", activeGroup.id !== "protect");
   }
+
+  document.querySelectorAll(".bundle-kpis").forEach((kpiSection) => {
+    const isMatchingBundle = kpiSection.dataset.kpiBundle === activeGroup.id;
+    kpiSection.hidden = !isMatchingBundle;
+  });
 
   const dropdown = document.querySelector("#moduleSelector");
   if (dropdown && dropdown.value !== activeGroup.id) {
@@ -422,6 +442,7 @@ async function refreshAll() {
     els.updatedAt.textContent = `Updated ${formatTime(summary.generatedAt)}`;
     renderDefender(summary.defender);
     renderOverview(overview, scheduler);
+    refreshBundleKpis(overview, scheduler).catch(() => {});
     if (state.activeView === "processes") {
       renderPerformance(overview.performance);
       renderProcesses(await getJson("/api/dashboard/live-processes"));
@@ -431,6 +452,70 @@ async function refreshAll() {
   } catch (error) {
     setMessage(error.message, true);
   }
+}
+
+async function refreshBundleKpis(overview, scheduler) {
+  // Govern Bundle Flat KPIs
+  try {
+    const [mcpSummary, codeGateSubmissions, mitreResponse] = await Promise.all([
+      getJson("/api/v1/agents/mcp-summary").catch(() => null),
+      getJson("/api/v1/codegate/submissions?limit=100").catch(() => []),
+      getJson("/api/dashboard/mitre-attack").catch(() => ({ events: [] }))
+    ]);
+    if (mcpSummary) {
+      if (els.kpiMcpTotal) els.kpiMcpTotal.textContent = mcpSummary.totalCount ?? 0;
+      if (els.kpiMcpBlocked) els.kpiMcpBlocked.textContent = mcpSummary.blockedCount ?? 0;
+    }
+    if (Array.isArray(codeGateSubmissions)) {
+      if (els.kpiCodeGateScans) els.kpiCodeGateScans.textContent = codeGateSubmissions.length;
+      const blockedCount = codeGateSubmissions.filter(s => s.verdict === "block").length;
+      if (els.kpiCodeGateBlocked) els.kpiCodeGateBlocked.textContent = blockedCount;
+    }
+    if (mitreResponse?.events && els.kpiMitreEvents) {
+      els.kpiMitreEvents.textContent = mitreResponse.events.length;
+    }
+  } catch {}
+
+  // DevOps Bundle Flat KPIs
+  try {
+    const devops = await getJson("/api/v1/devops/summary").catch(() => null);
+    if (devops) {
+      const sync = devops.sync || {};
+      const claims = devops.activeClaims || [];
+      const cycles = devops.cycles || [];
+      if (els.kpiDevopsApps) els.kpiDevopsApps.textContent = sync.totalManagedRepos || 1;
+      if (els.kpiDevopsPush) {
+        els.kpiDevopsPush.textContent = sync.pushHealthy ? "Healthy" : "Attention";
+        els.kpiDevopsPush.className = sync.pushHealthy ? "risk low" : "risk critical";
+      }
+      if (els.kpiDevopsPull) {
+        els.kpiDevopsPull.textContent = sync.pullHealthy ? "Healthy" : "Attention";
+        els.kpiDevopsPull.className = sync.pullHealthy ? "risk low" : "risk critical";
+      }
+      if (els.kpiDevopsClaims) els.kpiDevopsClaims.textContent = claims.length;
+      if (els.kpiDevopsCycle) {
+        const activeCycle = cycles.find(c => c.status === "in_progress") || cycles[0];
+        els.kpiDevopsCycle.textContent = activeCycle ? activeCycle.id : "None";
+      }
+    }
+  } catch {}
+
+  // Admin Bundle Flat KPIs
+  try {
+    const [mobileDevices, appActivity] = await Promise.all([
+      getJson("/api/dashboard/mobile-devices").catch(() => ({ devices: [], findings: [] })),
+      getJson("/api/dashboard/app-activity").catch(() => ({ installedApps: [] }))
+    ]);
+    if (els.kpiAdminDevices) els.kpiAdminDevices.textContent = (mobileDevices.devices || []).length;
+    if (els.kpiAdminFindings) els.kpiAdminFindings.textContent = (mobileDevices.findings || []).length;
+    if (els.kpiAdminApps) els.kpiAdminApps.textContent = (appActivity.installedApps || []).length;
+    if (els.kpiAdminScheduler && scheduler) {
+      els.kpiAdminScheduler.textContent = scheduler.schedulerHealthy ? "Healthy" : "Degraded";
+    }
+    if (els.kpiAdminAuth) {
+      els.kpiAdminAuth.textContent = state.role || (state.authenticated ? "Operator" : "Viewer");
+    }
+  } catch {}
 }
 
 async function refreshView(view) {
