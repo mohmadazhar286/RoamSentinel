@@ -11,6 +11,12 @@ public static class AgentGovernanceEndpoints
         endpoints.MapPost("/api/actions/authorize-agent", AuthorizeAgentAsync);
         endpoints.MapPost("/api/actions/block-agent", BlockAgentAsync);
         endpoints.MapPost("/api/actions/unblock-agent", UnblockAgentAsync);
+        endpoints.MapPost("/api/actions/block-agent-egress", BlockAgentAsync);
+        endpoints.MapPost("/api/actions/unblock-agent-egress", UnblockAgentAsync);
+        endpoints.MapGet("/api/v1/agents/egress-rules", GetAgentEgressRules);
+        endpoints.MapPost("/api/v1/agents/mcp-events", RecordMcpEventAsync);
+        endpoints.MapGet("/api/v1/agents/mcp-events", GetRecentMcpEvents);
+        endpoints.MapGet("/api/v1/agents/mcp-summary", GetMcpSummary);
         endpoints.MapPost(
             "/api/actions/enforce-agent-policy",
             EnforceAgentPolicyAsync);
@@ -183,5 +189,57 @@ public static class AgentGovernanceEndpoints
                 ? $"{Environment.NewLine}{skippedSharedHosts} shared host process(es) require manual review."
                 : ""),
             string.Join(Environment.NewLine, errors)));
+    }
+
+    private static IResult GetAgentEgressRules(
+        IAgentEgressRuleRepository egressRules,
+        ILocalSessionService sessions,
+        HttpContext context)
+    {
+        return Results.Ok(egressRules.GetAll());
+    }
+
+    private static IResult RecordMcpEventAsync(
+        McpToolCallRequest request,
+        IMcpGovernanceService mcpService,
+        ILocalSessionService sessions,
+        HttpContext context)
+    {
+        var denied = EndpointSecurity.RequireRole(
+            context,
+            sessions,
+            "Analyst");
+        if (denied is not null)
+        {
+            return denied;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.AgentKey) ||
+            string.IsNullOrWhiteSpace(request.ToolName) ||
+            request.AgentKey.Length > 128 ||
+            request.ToolName.Length > 128 ||
+            (request.ServerName?.Length ?? 0) > 128 ||
+            (request.ArgumentsJson?.Length ?? 0) > 100_000)
+        {
+            return Results.BadRequest(new { error = "Invalid MCP tool call payload." });
+        }
+
+        var session = sessions.Resolve(context.Request);
+        var result = mcpService.AssessAndRecord(request, session?.Role ?? "local-user");
+        return Results.Ok(result);
+    }
+
+    private static IResult GetRecentMcpEvents(
+        IMcpGovernanceService mcpService,
+        int? limit)
+    {
+        return Results.Ok(mcpService.GetRecentEvents(Math.Clamp(limit ?? 100, 1, 500)));
+    }
+
+    private static IResult GetMcpSummary(
+        IMcpGovernanceService mcpService,
+        int? limit)
+    {
+        return Results.Ok(mcpService.GetSummary(Math.Clamp(limit ?? 50, 1, 500)));
     }
 }

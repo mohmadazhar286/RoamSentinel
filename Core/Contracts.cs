@@ -32,6 +32,7 @@ public interface ICodeGateService
     CodeGateSubmissionDto? GetSubmission(string submissionId);
     IReadOnlyList<CodeGateGitPushAuditDto> GetRecentGitPushes(int limit);
     CodeGateGitPushAuditDto? GetGitPush(string auditId);
+    IReadOnlyList<CodeGateActiveRuleDto> GetActiveRules();
 }
 
 public interface ICodeGateRepository
@@ -46,6 +47,13 @@ public interface ICodeGateGitAuditRepository
     void Save(CodeGateGitPushAuditDto audit);
     IReadOnlyList<CodeGateGitPushAuditDto> GetRecent(int limit);
     CodeGateGitPushAuditDto? Get(string auditId);
+}
+
+public interface ICodeGateActiveRuleRepository
+{
+    IReadOnlyList<CodeGateActiveRuleDto> GetActiveRules();
+    void SaveRules(string bundleId, IReadOnlyList<CodeGateActiveRuleDto> rules);
+    void DeleteRulesByBundle(string bundleId);
 }
 
 public interface ICodeGateBundleService
@@ -372,6 +380,28 @@ public interface IAgentRegistryRepository
     IReadOnlyList<AgentGovernanceDto> GetAll();
 }
 
+public interface IAgentEgressRuleRepository
+{
+    IReadOnlyList<AgentEgressRuleDto> GetAll();
+    AgentEgressRuleDto? FindByPath(string executablePath);
+    void Upsert(AgentEgressRuleDto rule);
+    bool Remove(string executablePath);
+}
+
+public interface IMcpTelemetryRepository
+{
+    void RecordEvent(McpToolCallEventDto toolCall);
+    IReadOnlyList<McpToolCallEventDto> GetRecentEvents(int limit);
+    McpAuditSummaryDto GetSummary(int recentLimit = 50);
+}
+
+public interface IMcpGovernanceService
+{
+    McpToolCallEventDto AssessAndRecord(McpToolCallRequest request, string actor);
+    IReadOnlyList<McpToolCallEventDto> GetRecentEvents(int limit);
+    McpAuditSummaryDto GetSummary(int recentLimit = 50);
+}
+
 public interface IResponseService
 {
     Task<ActionResultDto> StartDefenderScanAsync(
@@ -405,6 +435,7 @@ public interface IResponseService
     ActionResultDto ResolveAlert(string alertId, string note);
     ActionResultDto MarkFalsePositive(string alertId, string note);
     ActionResultDto KillProcess(int processId);
+    IReadOnlyList<AgentEgressRuleDto> GetActiveAgentEgressRules();
 }
 
 public interface IEventLogService

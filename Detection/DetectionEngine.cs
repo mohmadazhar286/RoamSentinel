@@ -158,6 +158,9 @@ public sealed class DetectionEngine(
             "RS-AGENT-NET-001" => DetectUnusualAgentNetwork(
                 rule,
                 snapshot),
+            "RS-AGENT-CHILD-001" => DetectAgentSuspiciousChildProcess(
+                rule,
+                snapshot),
             "RS-NET-003" => DetectSuspiciousIpConnections(
                 rule,
                 snapshot,
@@ -329,6 +332,94 @@ public sealed class DetectionEngine(
                 agent.ExecutablePath,
                 agent.ProcessId is null ? "agent" : "process",
                 agent.ProcessId?.ToString() ?? agent.ExecutablePath));
+
+    private IEnumerable<DetectionFindingDto> DetectAgentSuspiciousChildProcess(
+        DetectionRuleDto rule,
+        TelemetrySnapshot snapshot)
+    {
+        var agentPids = new Dictionary<int, string>();
+        if (snapshot.GovernedAgents is not null)
+        {
+            foreach (var agent in snapshot.GovernedAgents)
+            {
+                if (agent.IsRunning && agent.ProcessId.HasValue && agent.ProcessId.Value > 0)
+                {
+                    agentPids[agent.ProcessId.Value] = agent.Name;
+                }
+            }
+        }
+
+        return snapshot.Processes
+            .Where(process =>
+                process.ParentProcessId > 0 &&
+                (agentPids.ContainsKey(process.ParentProcessId) ||
+                 IsKnownAgentProcessName(process.ParentProcessName)) &&
+                IsSuspiciousAgentChildProcess(process))
+            .Select(process =>
+            {
+                var agentName = agentPids.TryGetValue(process.ParentProcessId, out var name)
+                    ? name
+                    : process.ParentProcessName;
+                var cmdOrPath = string.IsNullOrWhiteSpace(process.CommandLine)
+                    ? process.Path
+                    : process.CommandLine;
+                return Finding(
+                    rule,
+                    snapshot.ObservedAt,
+                    $"AI agent spawned suspicious child process: {process.Name}",
+                    rule.Description,
+                    $"Agent '{agentName}' (PID {process.ParentProcessId}) spawned {process.Name} (PID {process.ProcessId}): {Truncate(cmdOrPath, 512)}",
+                    "process",
+                    process.ProcessId.ToString());
+            });
+    }
+
+    private static bool IsKnownAgentProcessName(string processName) =>
+        processName.Contains("cursor", StringComparison.OrdinalIgnoreCase) ||
+        processName.Contains("claude", StringComparison.OrdinalIgnoreCase) ||
+        processName.Contains("codex", StringComparison.OrdinalIgnoreCase) ||
+        processName.Contains("windsurf", StringComparison.OrdinalIgnoreCase) ||
+        processName.Contains("antigravity", StringComparison.OrdinalIgnoreCase) ||
+        processName.Contains("aider", StringComparison.OrdinalIgnoreCase) ||
+        processName.Contains("openhands", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsSuspiciousAgentChildProcess(ProcessTelemetry process)
+    {
+        var cmd = process.CommandLine;
+        var name = process.Name;
+        var path = process.Path;
+
+        if (IsPowerShell(name, path) && HasEncodedCommand(cmd))
+        {
+            return true;
+        }
+
+        if (cmd.Contains("Invoke-Expression", StringComparison.OrdinalIgnoreCase) ||
+            cmd.Contains("iex ", StringComparison.OrdinalIgnoreCase) ||
+            (cmd.Contains("certutil", StringComparison.OrdinalIgnoreCase) && cmd.Contains("-urlcache", StringComparison.OrdinalIgnoreCase)) ||
+            (cmd.Contains("bitsadmin", StringComparison.OrdinalIgnoreCase) && cmd.Contains("/transfer", StringComparison.OrdinalIgnoreCase)) ||
+            (cmd.Contains("curl ", StringComparison.OrdinalIgnoreCase) && (cmd.Contains(".exe", StringComparison.OrdinalIgnoreCase) || cmd.Contains(".ps1", StringComparison.OrdinalIgnoreCase))) ||
+            (cmd.Contains("wget ", StringComparison.OrdinalIgnoreCase) && (cmd.Contains(".exe", StringComparison.OrdinalIgnoreCase) || cmd.Contains(".ps1", StringComparison.OrdinalIgnoreCase))))
+        {
+            return true;
+        }
+
+        if (cmd.Contains("DisableRealtimeMonitoring", StringComparison.OrdinalIgnoreCase) ||
+            (cmd.Contains("advfirewall", StringComparison.OrdinalIgnoreCase) && cmd.Contains("off", StringComparison.OrdinalIgnoreCase)) ||
+            cmd.Contains("sc stop WinDefend", StringComparison.OrdinalIgnoreCase) ||
+            cmd.Contains("sc stop MpsSvc", StringComparison.OrdinalIgnoreCase) ||
+            (cmd.Contains("taskkill", StringComparison.OrdinalIgnoreCase) && cmd.Contains("RoamSentinel", StringComparison.OrdinalIgnoreCase)))
+        {
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(path) && path.Contains(@"\temp\", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
 
     private static IEnumerable<DetectionFindingDto>
         DetectSuspiciousIpConnections(

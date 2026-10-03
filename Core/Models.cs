@@ -974,3 +974,61 @@ public sealed record TelemetrySnapshot(
     IReadOnlyList<AgentInstallationTelemetry> InstalledAgents,
     IReadOnlyList<SuspiciousPathTelemetry> SuspiciousPaths,
     IReadOnlyList<AgentGovernanceDto>? GovernedAgents = null);
+
+public sealed record AgentEgressRuleDto(
+    string RuleId,
+    string AgentKey,
+    string ExecutablePath,
+    string DisplayName,
+    string Direction,
+    string Action,
+    DateTimeOffset CreatedAt,
+    string CreatedBy);
+
+public sealed record AgentEgressRuleRequest(
+    string Path,
+    string? AgentKey = null);
+
+public sealed record CodeGateActiveRuleDto(
+    string RuleId,
+    string BundleId,
+    string Name,
+    string Severity,
+    int RiskScore,
+    string Pattern,
+    string Explanation,
+    bool Enabled);
+
+public sealed record McpToolCallEventDto(
+    string EventId,
+    DateTimeOffset Timestamp,
+    string AgentKey,
+    string ServerName,
+    string ToolName,
+    string ArgumentsJson,
+    string ResultSummary,
+    int RiskScore,
+    string Severity,
+    string Verdict,
+    string PolicyReason,
+    int? ProcessId = null,
+    string ClientHost = "127.0.0.1");
+
+public sealed record McpToolCallRequest(
+    string AgentKey,
+    string ServerName,
+    string ToolName,
+    string ArgumentsJson,
+    string? ResultSummary = null,
+    int? ProcessId = null);
+
+public sealed record McpAuditSummaryDto(
+    DateTimeOffset GeneratedAt,
+    int TotalCount,
+    int BlockedCount,
+    int WarnedCount,
+    IReadOnlyList<string> DistinctServers,
+    IReadOnlyList<string> DistinctTools,
+    IReadOnlyList<McpToolCallEventDto> RecentEvents);
+
+

@@ -261,6 +261,11 @@
             <thead><tr><th>Imported</th><th>Type</th><th>Name</th><th>Version</th><th>Generated</th><th>Status</th></tr></thead>
             <tbody id="codeGateBundlesBody"></tbody>
           </table></div>
+          <div class="view-toolbar"><h2>Active Dynamic CodeGate Rules</h2></div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>Rule ID</th><th>Name</th><th>Severity</th><th>Risk</th><th>Pattern</th><th>Explanation</th><th>Status</th></tr></thead>
+            <tbody id="codeGateRulesBody"></tbody>
+          </table></div>
         </div>
 
         <div id="alerts" class="view">
@@ -682,6 +687,30 @@
             <table>
               <thead><tr><th>Status</th><th>Agent</th><th>Vendor</th><th>Executable</th><th>First seen</th><th>Last seen</th><th>Network</th><th>Risk</th><th>Reason</th><th>Controls</th></tr></thead>
               <tbody id="agentsBody"></tbody>
+            </table>
+          </div>
+          <div class="view-toolbar">
+            <h2>Agent Egress Isolation Rules</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Agent Key</th><th>Executable Path</th><th>Direction</th><th>Action</th><th>Created</th><th>Created By</th><th>Controls</th></tr></thead>
+              <tbody id="agentEgressRulesBody"></tbody>
+            </table>
+          </div>
+          <div class="posture-grid">
+            <section><span>Total MCP calls</span><strong id="mcpTotalCount">0</strong></section>
+            <section><span>Blocked calls</span><strong id="mcpBlockedCount">0</strong></section>
+            <section><span>Warned calls</span><strong id="mcpWarnedCount">0</strong></section>
+            <section><span>Active MCP tools</span><strong id="mcpToolCount">0</strong></section>
+          </div>
+          <div class="view-toolbar">
+            <h2>Model Context Protocol (MCP) Tool Call Audit</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Time</th><th>Agent</th><th>Server</th><th>Tool</th><th>Verdict</th><th>Risk</th><th>Reason</th><th>Arguments</th></tr></thead>
+              <tbody id="mcpEventsBody"></tbody>
             </table>
           </div>
         </div>

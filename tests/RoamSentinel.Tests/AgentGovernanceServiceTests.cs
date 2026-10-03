@@ -90,6 +90,42 @@ public sealed class AgentGovernanceServiceTests
         Assert.Contains(path, repository.SeenPolicyPaths);
     }
 
+    [Fact]
+    public void ClaudeCode_FromTrustedNpmPath_HasLowRisk()
+    {
+        var (service, _) = CreateService();
+        var process = Process(
+            15,
+            "node",
+            @"C:\npm\node_modules\@anthropic-ai\claude-code\cli.js");
+
+        var result = service.Evaluate(process);
+
+        Assert.True(result.IsAgent);
+        Assert.Equal("Claude Code", result.AgentName);
+        Assert.Equal("Anthropic", result.Vendor);
+        Assert.Equal("trusted", result.Status);
+        Assert.Equal(10, result.RiskScore);
+    }
+
+    [Fact]
+    public void Antigravity_FromTrustedGeminiPath_HasLowRisk()
+    {
+        var (service, _) = CreateService();
+        var process = Process(
+            16,
+            "agy",
+            @"C:\Users\AM\.gemini\antigravity\bin\agy.exe");
+
+        var result = service.Evaluate(process);
+
+        Assert.True(result.IsAgent);
+        Assert.Equal("Google Antigravity", result.AgentName);
+        Assert.Equal("Google", result.Vendor);
+        Assert.Equal("trusted", result.Status);
+        Assert.Equal(10, result.RiskScore);
+    }
+
     private static (
         AgentGovernanceService Service,
         InMemoryAgentRepository Repository) CreateService()
@@ -167,6 +203,27 @@ public sealed class AgentGovernanceServiceTests
                 "OpenAI",
                 ["codex"],
                 [@"\appdata\local\openai\codex"],
+                true),
+            new(
+                "claude-code",
+                "Claude Code",
+                "Anthropic",
+                ["@anthropic-ai/claude-code", "claude-code", "claude.cmd"],
+                [@"\npm\node_modules\@anthropic-ai\claude-code", @"\appdata\roaming\npm\claude"],
+                true),
+            new(
+                "antigravity",
+                "Google Antigravity",
+                "Google",
+                ["antigravity", "agy", "@google/antigravity"],
+                [@"\.gemini\antigravity", @"\appdata\local\programs\antigravity"],
+                true),
+            new(
+                "mcp-server",
+                "MCP Server",
+                "Model Context Protocol",
+                ["@modelcontextprotocol/server-", "mcp-server-", "mcp_server"],
+                [@"\node_modules\@modelcontextprotocol"],
                 true)
         ];
 
@@ -179,6 +236,114 @@ public sealed class AgentGovernanceServiceTests
         }
 
         public IReadOnlyList<AgentGovernanceDto> GetAll() => _agents;
+    }
+
+    [Fact]
+    public void McpGovernance_DestructiveCommand_Blocks()
+    {
+        var repo = new InMemoryMcpTelemetryRepository();
+        var service = new McpGovernanceService(repo);
+
+        var request = new McpToolCallRequest(
+            "claude-code",
+            "bash-server",
+            "execute_command",
+            "{\"command\":\"rm -rf /\"}");
+
+        var evt = service.AssessAndRecord(request, "tester");
+
+        Assert.Equal("Block", evt.Verdict);
+        Assert.Equal(90, evt.RiskScore);
+        Assert.Equal("High", evt.Severity);
+        Assert.Single(repo.Events);
+    }
+
+    [Fact]
+    public void McpGovernance_SensitiveCredentials_Warns()
+    {
+        var repo = new InMemoryMcpTelemetryRepository();
+        var service = new McpGovernanceService(repo);
+
+        var request = new McpToolCallRequest(
+            "antigravity",
+            "filesystem-server",
+            "read_file",
+            "{\"path\":\"C:\\\\Users\\\\AM\\\\.ssh\\\\id_rsa\"}");
+
+        var evt = service.AssessAndRecord(request, "tester");
+
+        Assert.Equal("Warn", evt.Verdict);
+        Assert.Equal(80, evt.RiskScore);
+        Assert.Single(repo.Events);
+    }
+
+    [Fact]
+    public void McpGovernance_SystemLocation_Blocks()
+    {
+        var repo = new InMemoryMcpTelemetryRepository();
+        var service = new McpGovernanceService(repo);
+
+        var request = new McpToolCallRequest(
+            "goose-ai",
+            "filesystem-server",
+            "write_file",
+            "{\"path\":\"C:\\\\Windows\\\\System32\\\\drivers\\\\etc\\\\hosts\"}");
+
+        var evt = service.AssessAndRecord(request, "tester");
+
+        Assert.Equal("Block", evt.Verdict);
+        Assert.Equal(85, evt.RiskScore);
+        Assert.Single(repo.Events);
+    }
+
+    [Fact]
+    public void McpGovernance_SafeTool_Allows()
+    {
+        var repo = new InMemoryMcpTelemetryRepository();
+        var service = new McpGovernanceService(repo);
+
+        var request = new McpToolCallRequest(
+            "antigravity",
+            "search-server",
+            "search_docs",
+            "{\"query\":\"how to configure RoamSentinel\"}");
+
+        var evt = service.AssessAndRecord(request, "tester");
+
+        Assert.Equal("Allow", evt.Verdict);
+        Assert.Equal(10, evt.RiskScore);
+        Assert.Single(repo.Events);
+    }
+
+    private sealed class InMemoryMcpTelemetryRepository : IMcpTelemetryRepository
+    {
+        public List<McpToolCallEventDto> Events { get; } = [];
+
+        public void RecordEvent(McpToolCallEventDto toolCall)
+        {
+            Events.Add(toolCall);
+        }
+
+        public IReadOnlyList<McpToolCallEventDto> GetRecentEvents(int limit)
+        {
+            return Events.Take(limit).ToList();
+        }
+
+        public McpAuditSummaryDto GetSummary(int recentLimit = 50)
+        {
+            var blocked = Events.Count(e => e.Verdict == "Block");
+            var warned = Events.Count(e => e.Verdict == "Warn");
+            var distinctServers = Events.Select(e => e.ServerName).Distinct().ToList();
+            var distinctTools = Events.Select(e => e.ToolName).Distinct().ToList();
+            return new McpAuditSummaryDto(
+                DateTimeOffset.UtcNow,
+                Events.Count,
+                blocked,
+                warned,
+                distinctServers,
+                distinctTools,
+                Events.Take(recentLimit).ToList());
+        }
     }
 
     private sealed class NoOpAuditRepository : IAuditRepository

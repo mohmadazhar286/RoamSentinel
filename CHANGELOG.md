@@ -7,6 +7,17 @@ versioned releases; entries describe the current development baseline.
 
 ### Added
 
+- RS Console UI expansion with dynamic CodeGate active rules table, agent egress network isolation controls and active firewall rules table, and Model Context Protocol (MCP) tool call audit posture counters and real-time event feed
+- Model Context Protocol (MCP) Tool Call Auditing and Policy Engine with dedicated SQLite telemetry persistence (`mcp_tool_events`), detection rule `RS-AGENT-MCP-001` (MITRE `T1059.001`, `T1562.001`, `T1552`), and `/api/v1/agents/mcp-events` and `/api/v1/agents/mcp-summary` endpoints
+- Dynamic RS CodeGate Execution Engine compiling and activating imported bundle regex rules in database-backed `codegate_active_rules`, executing active rules in offline code scanning, Git pre-receive validation, and exposing `/api/v1/codegate/rules`
+- AI-Agent Governance expansion adding catalog support for Claude Code,
+  Google Antigravity, Continue, Goose, and Model Context Protocol (MCP) servers
+- Detection rule `RS-AGENT-CHILD-001` detecting when governed AI agents spawn
+  suspicious child processes (encoded shell commands, downloader execution,
+  or defense impairment) with MITRE ATT&CK `T1059.001`, `T1204.002`, and `T1105` mappings
+- Reversible Agent Egress Network Controls with bidirectional Windows Firewall
+  isolation, dedicated `agent_egress_rules` SQLite persistence, audit logging,
+  and `/api/v1/agents/egress-rules` endpoint visibility
 - Module experience manifest endpoint and contract-driven RS Console workspace
   shell for future module-wise UI isolation without changing existing
   `/api/modules` compatibility

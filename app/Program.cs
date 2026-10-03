@@ -89,11 +89,15 @@ builder.Services.AddSingleton<IDatabaseMigration, ProtectionFindingsCodeGateMigr
 builder.Services.AddSingleton<IDatabaseMigration, CodeGateGitTraceabilityMigration>();
 builder.Services.AddSingleton<IDatabaseMigration, CodeGateOfflineBundleMigration>();
 builder.Services.AddSingleton<IDatabaseMigration, ProtectionSchedulerMigration>();
+builder.Services.AddSingleton<IDatabaseMigration, AgentGovernanceExpansionMigration>();
+builder.Services.AddSingleton<IDatabaseMigration, McpGovernanceMigration>();
 builder.Services.AddSingleton<IDatabaseMigrationRunner, DatabaseMigrationRunner>();
 builder.Services.AddSingleton<ILegacyDataImporter, LegacyDataImporter>();
 builder.Services.AddSingleton<IEventRepository, EventRepository>();
 builder.Services.AddSingleton<IAgentPolicyRepository, AgentPolicyRepository>();
 builder.Services.AddSingleton<IAgentRegistryRepository, AgentRegistryRepository>();
+builder.Services.AddSingleton<IAgentEgressRuleRepository, AgentEgressRuleRepository>();
+builder.Services.AddSingleton<IMcpTelemetryRepository, McpTelemetryRepository>();
 builder.Services.AddSingleton<IIpBlockRepository, IpBlockRepository>();
 builder.Services.AddSingleton<IAuditRepository, AuditRepository>();
 builder.Services.AddSingleton<IResponseActionRepository, ResponseActionRepository>();
@@ -110,6 +114,7 @@ builder.Services.AddSingleton<
     ICodeGateGitAuditRepository,
     CodeGateGitAuditRepository>();
 builder.Services.AddSingleton<ICodeGateBundleRepository, CodeGateBundleRepository>();
+builder.Services.AddSingleton<ICodeGateActiveRuleRepository, CodeGateActiveRuleRepository>();
 builder.Services.AddSingleton<ICodeGateBundleService, CodeGateBundleService>();
 builder.Services.AddSingleton<IDetectionRuleRepository, DetectionRuleRepository>();
 builder.Services.AddSingleton<IThreatIndicatorRepository, ThreatIndicatorRepository>();
@@ -163,6 +168,7 @@ builder.Services.AddHostedService<ProtectionSchedulerService>();
 builder.Services.AddSingleton<IResourceMonitor, ResourceMonitor>();
 builder.Services.AddSingleton<IDetectionEngine, DetectionEngine>();
 builder.Services.AddSingleton<IAgentGovernanceService, AgentGovernanceService>();
+builder.Services.AddSingleton<IMcpGovernanceService, McpGovernanceService>();
 builder.Services.AddSingleton<IAgentIdentityService, AgentIdentityService>();
 builder.Services.AddSingleton<IThreatIntelProvider, VirusTotalProvider>();
 builder.Services.AddSingleton<IThreatIntelProvider, AbuseIpDbProvider>();

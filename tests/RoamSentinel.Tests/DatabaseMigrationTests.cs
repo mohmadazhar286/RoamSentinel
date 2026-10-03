@@ -38,7 +38,9 @@ public sealed class DatabaseMigrationTests : IDisposable
                 new ProtectionFindingsCodeGateMigration(),
                 new CodeGateGitTraceabilityMigration(),
                 new CodeGateOfflineBundleMigration(),
-                new ProtectionSchedulerMigration()
+                new ProtectionSchedulerMigration(),
+                new AgentGovernanceExpansionMigration(),
+                new McpGovernanceMigration()
             ]);
 
         runner.Migrate();
@@ -46,14 +48,158 @@ public sealed class DatabaseMigrationTests : IDisposable
 
         var status = new DatabaseStatusRepository(factory).GetStatus();
         Assert.Equal("SQLite", status.Provider);
-        Assert.Equal(2026081001, status.LatestMigration);
-        Assert.Equal(16, status.AppliedMigrationCount);
-        Assert.Equal(41, status.TableRowCounts.Count);
+        Assert.Equal(2026092702, status.LatestMigration);
+        Assert.Equal(18, status.AppliedMigrationCount);
+        Assert.Equal(44, status.TableRowCounts.Count);
         Assert.Contains("security_events", status.TableRowCounts.Keys);
         Assert.Contains("audit_log", status.TableRowCounts.Keys);
         Assert.Contains("system_settings", status.TableRowCounts.Keys);
         Assert.Contains("protection_scheduler_tasks", status.TableRowCounts.Keys);
-        Assert.Equal(10, status.TableRowCounts["agent_catalog"]);
+        Assert.Contains("agent_egress_rules", status.TableRowCounts.Keys);
+        Assert.Contains("codegate_active_rules", status.TableRowCounts.Keys);
+        Assert.Contains("mcp_tool_events", status.TableRowCounts.Keys);
+        Assert.Equal(15, status.TableRowCounts["agent_catalog"]);
+    }
+
+    [Fact]
+    public void AgentEgressRule_UpsertAndRemove_ProducesAuditLogEntry()
+    {
+        var factory = CreateMigratedFactory();
+        var repository = new AgentEgressRuleRepository(factory);
+        var audit = new AuditRepository(factory);
+
+        var rule = new AgentEgressRuleDto(
+            "rule-1",
+            "claude-code",
+            @"C:\npm\claude.cmd",
+            "RS Agent Block claude",
+            "Outbound",
+            "Block",
+            DateTimeOffset.UtcNow,
+            "Administrator");
+
+        repository.Upsert(rule);
+
+        var stored = repository.FindByPath(@"C:\npm\claude.cmd");
+        Assert.NotNull(stored);
+        Assert.Equal("claude-code", stored.AgentKey);
+        Assert.Equal("Block", stored.Action);
+        Assert.Contains(
+            audit.GetRecent(10),
+            entry => entry.Action == "agent_egress.rule_upserted" &&
+                     entry.EntityId == @"C:\npm\claude.cmd");
+
+        var removed = repository.Remove(@"C:\npm\claude.cmd");
+        Assert.True(removed);
+        Assert.Null(repository.FindByPath(@"C:\npm\claude.cmd"));
+        Assert.Contains(
+            audit.GetRecent(10),
+            entry => entry.Action == "agent_egress.rule_removed" &&
+                     entry.EntityId == @"C:\npm\claude.cmd");
+    }
+
+    [Fact]
+    public void McpTelemetryRepository_RecordAndSummary_CalculatesAndAudits()
+    {
+        var factory = CreateMigratedFactory();
+        var repository = new McpTelemetryRepository(factory);
+        var audit = new AuditRepository(factory);
+
+        var toolCall = new McpToolCallEventDto(
+            "mcp-event-1",
+            DateTimeOffset.UtcNow,
+            "claude-code",
+            "filesystem",
+            "read_file",
+            """{"path":"C:\\dev\\src\\index.ts"}""",
+            "File read ok",
+            10,
+            "Info",
+            "Allow",
+            "Within policy",
+            1234,
+            "127.0.0.1");
+
+        repository.RecordEvent(toolCall);
+
+        var recent = repository.GetRecentEvents(10);
+        var stored = Assert.Single(recent);
+        Assert.Equal("mcp-event-1", stored.EventId);
+        Assert.Equal("claude-code", stored.AgentKey);
+        Assert.Equal("filesystem", stored.ServerName);
+        Assert.Equal("read_file", stored.ToolName);
+
+        var summary = repository.GetSummary(10);
+        Assert.Equal(1, summary.TotalCount);
+        Assert.Equal(0, summary.BlockedCount);
+        Assert.Equal(0, summary.WarnedCount);
+        Assert.Contains("filesystem", summary.DistinctServers);
+        Assert.Contains("read_file", summary.DistinctTools);
+
+        Assert.Contains(
+            audit.GetRecent(10),
+            entry => entry.Action == "agent_mcp.tool_called" &&
+                     entry.EntityId == "mcp-event-1");
+    }
+
+    [Fact]
+    public void McpGovernanceService_AssessAndRecord_EnforcesPolicyAndEmitsAlerts()
+    {
+        var factory = CreateMigratedFactory();
+        var telemetry = new McpTelemetryRepository(factory);
+        var events = new EventRepository(factory);
+        var service = new RoamSentinel.AgentGovernance.McpGovernanceService(telemetry, events);
+
+        // 1. Destructive command => Block
+        var blocked = service.AssessAndRecord(
+            new McpToolCallRequest(
+                "antigravity",
+                "terminal",
+                "execute_command",
+                """{"command":"rm -rf /"}"""),
+            "analyst");
+
+        Assert.Equal("Block", blocked.Verdict);
+        Assert.Equal(90, blocked.RiskScore);
+        Assert.Equal("High", blocked.Severity);
+        Assert.Contains("Destructive shell", blocked.PolicyReason);
+
+        // 2. Sensitive credential access => Warn
+        var warned = service.AssessAndRecord(
+            new McpToolCallRequest(
+                "goose-ai",
+                "filesystem",
+                "read_file",
+                """{"path":"C:\\project\\.env"}"""),
+            "analyst");
+
+        Assert.Equal("Warn", warned.Verdict);
+        Assert.Equal(80, warned.RiskScore);
+        Assert.Contains("Sensitive credential", warned.PolicyReason);
+
+        // 3. Normal file reading => Allow
+        var allowed = service.AssessAndRecord(
+            new McpToolCallRequest(
+                "continue-dev",
+                "filesystem",
+                "read_file",
+                """{"path":"C:\\project\\README.md"}"""),
+            "analyst");
+
+        Assert.Equal("Allow", allowed.Verdict);
+        Assert.Equal(10, allowed.RiskScore);
+
+        // Check alerts recorded for Block and Warn, but not Allow
+        var alertList = events.GetRecent(10);
+        Assert.Contains(alertList, alert => alert.Category == "Agent Governance" && alert.Title.Contains("antigravity"));
+        Assert.Contains(alertList, alert => alert.Category == "Agent Governance" && alert.Title.Contains("goose-ai"));
+        Assert.DoesNotContain(alertList, alert => alert.Title.Contains("continue-dev"));
+
+        // Check summary
+        var summary = service.GetSummary(10);
+        Assert.Equal(3, summary.TotalCount);
+        Assert.Equal(1, summary.BlockedCount);
+        Assert.Equal(1, summary.WarnedCount);
     }
 
     [Fact]
@@ -525,7 +671,7 @@ public sealed class DatabaseMigrationTests : IDisposable
         using var migrationCommand = restored.CreateCommand();
         migrationCommand.CommandText =
             "SELECT COUNT(*) FROM schema_migrations;";
-        Assert.Equal(16L, (long)Assert.IsType<long>(
+        Assert.Equal(18L, (long)Assert.IsType<long>(
             migrationCommand.ExecuteScalar()));
 
         Assert.Contains(
@@ -695,6 +841,143 @@ public sealed class DatabaseMigrationTests : IDisposable
         Assert.Throws<InvalidDataException>(() => service.ImportBundle(
             new CodeGateBundleImportRequest(bundlePath, "bad-sha"),
             "Administrator"));
+    }
+
+    [Fact]
+    public void CodeGateActiveRule_SaveAndGetAndAudit_WorksCorrectly()
+    {
+        var factory = CreateMigratedFactory();
+        var repository = new CodeGateActiveRuleRepository(factory);
+        var audit = new AuditRepository(factory);
+
+        var rule = new CodeGateActiveRuleDto(
+            "CG-CUSTOM-001",
+            "bundle-test-1",
+            "Block Internal Token",
+            "High",
+            80,
+            @"internal_token_[0-9a-f]{16}",
+            "Forbidden internal token detected.",
+            true);
+
+        repository.SaveRules("bundle-test-1", [rule]);
+
+        var active = repository.GetActiveRules();
+        var retrieved = Assert.Single(active);
+        Assert.Equal("CG-CUSTOM-001", retrieved.RuleId);
+        Assert.Equal("bundle-test-1", retrieved.BundleId);
+        Assert.Equal(80, retrieved.RiskScore);
+        Assert.Contains(
+            audit.GetRecent(10),
+            entry => entry.Action == "codegate.active_rules_saved" &&
+                     entry.EntityId == "bundle-test-1");
+
+        repository.DeleteRulesByBundle("bundle-test-1");
+        Assert.Empty(repository.GetActiveRules());
+        Assert.Contains(
+            audit.GetRecent(10),
+            entry => entry.Action == "codegate.active_rules_deleted" &&
+                     entry.EntityId == "bundle-test-1");
+    }
+
+    [Fact]
+    public void CodeGateOfflineBundleImport_WithRulesActivatesAndExecutesInScan()
+    {
+        var factory = CreateMigratedFactory();
+        var bundleRepo = new CodeGateBundleRepository(factory);
+        var activeRulesRepo = new CodeGateActiveRuleRepository(factory);
+        var bundleService = new RoamSentinel.CodeGate.CodeGateBundleService(bundleRepo, activeRulesRepo);
+        var codeGateService = new RoamSentinel.CodeGate.CodeGateService(
+            new CodeGateRepository(factory),
+            new CodeGateGitAuditRepository(factory),
+            activeRulesRepo);
+
+        var bundlePath = Path.Combine(_testRoot, "active-rules-bundle.json");
+        File.WriteAllText(
+            bundlePath,
+            """
+            {
+              "component": "RS CodeGate",
+              "bundleType": "codegate-rules",
+              "name": "Custom Organization Security Rules",
+              "version": "2026.09.27",
+              "schemaVersion": "1.0",
+              "generatedAt": "2026-09-27T00:00:00Z",
+              "source": "offline-admin",
+              "signature": "unsigned-test",
+              "rules": [
+                {
+                  "ruleId": "CG-ORG-SECRET-001",
+                  "name": "Org Proprietary Key",
+                  "severity": "High",
+                  "riskScore": 85,
+                  "pattern": "ORG_KEY_[A-Z0-9]{12}",
+                  "explanation": "Proprietary organization key pattern detected."
+                }
+              ]
+            }
+            """);
+
+        var imported = bundleService.ImportBundle(
+            new CodeGateBundleImportRequest(bundlePath, ""),
+            "Administrator");
+
+        Assert.Equal("active", imported.Status);
+        Assert.Contains("1 rules activated", imported.Message);
+
+        var activeRules = codeGateService.GetActiveRules();
+        var activeRule = Assert.Single(activeRules);
+        Assert.Equal("CG-ORG-SECRET-001", activeRule.RuleId);
+
+        // Test evaluating text with this pattern
+        var scanResult = codeGateService.Evaluate(new CodeGateScanRequest(
+            "const secret = \"ORG_KEY_ABC123XYZ890\";",
+            "inline",
+            "config.ts"));
+
+        Assert.Equal("block", scanResult.Verdict);
+        Assert.True(scanResult.RiskScore >= 80);
+        Assert.Contains(
+            scanResult.Findings,
+            finding => finding.Contains("Proprietary organization key pattern detected."));
+    }
+
+    [Fact]
+    public void CodeGateOfflineBundleImport_RejectsInvalidRegexPattern()
+    {
+        var factory = CreateMigratedFactory();
+        var bundleRepo = new CodeGateBundleRepository(factory);
+        var activeRulesRepo = new CodeGateActiveRuleRepository(factory);
+        var bundleService = new RoamSentinel.CodeGate.CodeGateBundleService(bundleRepo, activeRulesRepo);
+
+        var bundlePath = Path.Combine(_testRoot, "bad-regex-bundle.json");
+        File.WriteAllText(
+            bundlePath,
+            """
+            {
+              "component": "RS CodeGate",
+              "bundleType": "codegate-rules",
+              "name": "Malformed Regex Rules",
+              "version": "2026.09.27",
+              "schemaVersion": "1.0",
+              "generatedAt": "2026-09-27T00:00:00Z",
+              "source": "offline-admin",
+              "signature": "unsigned-test",
+              "rules": [
+                {
+                  "ruleId": "CG-BAD-001",
+                  "name": "Bad Regex",
+                  "severity": "High",
+                  "pattern": "[a-z"
+                }
+              ]
+            }
+            """);
+
+        var ex = Assert.Throws<InvalidDataException>(() => bundleService.ImportBundle(
+            new CodeGateBundleImportRequest(bundlePath, ""),
+            "Administrator"));
+        Assert.Contains("invalid regex pattern", ex.Message);
     }
 
     [Fact]
@@ -933,7 +1216,9 @@ public sealed class DatabaseMigrationTests : IDisposable
                 new ProtectionFindingsCodeGateMigration(),
                 new CodeGateGitTraceabilityMigration(),
                 new CodeGateOfflineBundleMigration(),
-                new ProtectionSchedulerMigration()
+                new ProtectionSchedulerMigration(),
+                new AgentGovernanceExpansionMigration(),
+                new McpGovernanceMigration()
             ]).Migrate();
         return factory;
     }

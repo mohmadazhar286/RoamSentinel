@@ -55,7 +55,7 @@ public sealed class ModuleExperienceService(
                 "codegate",
                 "components",
                 ["components"],
-                ["/api/v1/codegate/submissions", "/api/v1/codegate/git-pushes", "/api/v1/codegate/offline-bundles"],
+                ["/api/v1/codegate/submissions", "/api/v1/codegate/git-pushes", "/api/v1/codegate/offline-bundles", "/api/v1/codegate/rules"],
                 ["/api/modules/codegate/scan", "/api/v1/codegate/scan-path", "/api/v1/codegate/git-push"],
                 "Pre-trust code intake, staging gate, Git push, and deployment evidence experience."),
             Experience(
@@ -66,8 +66,8 @@ public sealed class ModuleExperienceService(
                 "protect",
                 "connections",
                 ["connections", "agents", "auditLog"],
-                ["/api/dashboard/network-connections", "/api/dashboard/ai-agent-governance"],
-                ["/api/actions/enforce-agent-policy", "/api/actions/block-agent"],
+                ["/api/dashboard/network-connections", "/api/dashboard/ai-agent-governance", "/api/v1/agents/mcp-events", "/api/v1/agents/mcp-summary"],
+                ["/api/actions/enforce-agent-policy", "/api/actions/block-agent", "/api/v1/agents/mcp-events"],
                 "App, agent, and outbound data movement review experience."),
             Experience(
                 registrations,

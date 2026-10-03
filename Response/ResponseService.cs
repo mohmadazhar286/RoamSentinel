@@ -12,6 +12,7 @@ namespace RoamSentinel.Response;
 public sealed class ResponseService(
     IPowerShellRunner powerShell,
     IIpBlockRepository ipBlocks,
+    IAgentEgressRuleRepository agentEgressRules,
     IResponseActionRepository responseActions,
     IDisabledStartupRepository disabledStartup,
     IEventRepository events,
@@ -505,6 +506,9 @@ public sealed class ResponseService(
     public ActionResultDto MarkFalsePositive(string alertId, string note) =>
         SetAlertDisposition(alertId, "false_positive", note);
 
+    public IReadOnlyList<AgentEgressRuleDto> GetActiveAgentEgressRules() =>
+        agentEgressRules.GetAll();
+
     private async Task<ActionResultDto> ChangeAgentFirewallStateAsync(
         string path,
         bool block,
@@ -539,7 +543,8 @@ public sealed class ResponseService(
                 $name = $currentPrefix + ' Agent Block ' + ([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($program))).Substring(0, 24);
                 Get-NetFirewallRule -DisplayName ($legacyPrefix + ' Agent Block ' + ([Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($program))).Substring(0, 24) + '*') -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue;
                 Get-NetFirewallRule -DisplayName "$name*" -ErrorAction SilentlyContinue | Remove-NetFirewallRule -ErrorAction SilentlyContinue;
-                New-NetFirewallRule -DisplayName "$name Outbound" -Direction Outbound -Program $program -Action Block -Profile Any -ErrorAction Stop
+                New-NetFirewallRule -DisplayName "$name Outbound" -Direction Outbound -Program $program -Action Block -Profile Any -ErrorAction Stop;
+                New-NetFirewallRule -DisplayName "$name Inbound" -Direction Inbound -Program $program -Action Block -Profile Any -ErrorAction Stop
                 """
             : """
                 $program = $env:ROAMSENTINEL_PARAM_PROGRAM_PATH;
@@ -561,6 +566,28 @@ public sealed class ResponseService(
                 }),
             TimeSpan.FromSeconds(options.CommandTimeoutSeconds),
             cancellationToken);
+
+        var displayName = $"{options.FirewallRulePrefix} Agent Block {Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(path)))[..16]}";
+        if (result.ExitCode == 0)
+        {
+            if (block)
+            {
+                agentEgressRules.Upsert(new AgentEgressRuleDto(
+                    Guid.NewGuid().ToString("N"),
+                    Path.GetFileNameWithoutExtension(path).ToLowerInvariant(),
+                    path,
+                    displayName,
+                    "Outbound",
+                    "Block",
+                    DateTimeOffset.UtcNow,
+                    Operator));
+            }
+            else
+            {
+                agentEgressRules.Remove(path);
+            }
+        }
+
         eventLog.RecordAction(
             block ? "Agent blocked" : "Agent block restored",
             result.ExitCode == 0 ? (block ? "High" : "Medium") : "High",

@@ -23,7 +23,8 @@ public sealed class CodeGateModule : IProductModule
 
 public sealed class CodeGateService(
     ICodeGateRepository? repository = null,
-    ICodeGateGitAuditRepository? gitAudit = null) : ICodeGateService
+    ICodeGateGitAuditRepository? gitAudit = null,
+    ICodeGateActiveRuleRepository? activeRules = null) : ICodeGateService
 {
     private const int MaxFiles = 500;
     private const int MaxTextBytesPerFile = 1_000_000;
@@ -281,7 +282,12 @@ public sealed class CodeGateService(
     public CodeGateGitPushAuditDto? GetGitPush(string auditId) =>
         gitAudit?.Get(auditId);
 
-    private static List<CodeGateFindingDto> EvaluateText(
+    public IReadOnlyList<CodeGateActiveRuleDto> GetActiveRules() =>
+        activeRules?.GetActiveRules() ?? [];
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, Regex?> RuleRegexCache = new();
+
+    private List<CodeGateFindingDto> EvaluateText(
         string source,
         string path,
         int offset)
@@ -387,6 +393,54 @@ public sealed class CodeGateService(
                 path,
                 "sensitive-data-or-credential-field",
                 "Deployment artifact references sensitive data or credential fields; verify it is not exposing secrets or regulated data."));
+        }
+
+        if (activeRules is not null)
+        {
+            var dynamicRules = activeRules.GetActiveRules();
+            foreach (var rule in dynamicRules)
+            {
+                if (!rule.Enabled || string.IsNullOrWhiteSpace(rule.Pattern))
+                {
+                    continue;
+                }
+
+                var regex = RuleRegexCache.GetOrAdd(rule.Pattern, pattern =>
+                {
+                    try
+                    {
+                        return new Regex(
+                            pattern,
+                            RegexOptions.Compiled | RegexOptions.IgnoreCase,
+                            TimeSpan.FromSeconds(1));
+                    }
+                    catch
+                    {
+                        return null;
+                    }
+                });
+
+                if (regex is not null)
+                {
+                    try
+                    {
+                        if (regex.IsMatch(source))
+                        {
+                            findings.Add(CreateFinding(
+                                rule.RuleId,
+                                rule.Severity,
+                                rule.RiskScore,
+                                path,
+                                $"[RULE-MATCH] {rule.Name}",
+                                rule.Explanation));
+                        }
+                    }
+                    catch (RegexMatchTimeoutException)
+                    {
+                        // Ignore pattern match timeout
+                    }
+                }
+            }
         }
 
         return findings

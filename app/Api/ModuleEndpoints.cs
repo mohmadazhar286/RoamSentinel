@@ -63,6 +63,10 @@ public static class ModuleEndpoints
                 Results.Ok(bundles.GetRecentBundles(
                     Math.Clamp(limit ?? 100, 1, 500))));
         endpoints.MapGet(
+            "/api/v1/codegate/rules",
+            (ICodeGateService codeGate) =>
+                Results.Ok(codeGate.GetActiveRules()));
+        endpoints.MapGet(
             "/api/v1/codegate/reports/submissions.csv",
             ExportSubmissionsCsv);
         endpoints.MapGet(

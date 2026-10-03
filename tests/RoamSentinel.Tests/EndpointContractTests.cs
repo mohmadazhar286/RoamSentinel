@@ -62,6 +62,14 @@ public sealed class EndpointContractTests : IDisposable
         var insiderRisk = await client.GetAsync("/api/modules/insider-risk");
         var personalProtection = await client.GetAsync(
             "/api/v1/device-shield/personal-protection");
+        var egressRules = await client.GetAsync(
+            "/api/v1/agents/egress-rules");
+        var codeGateRules = await client.GetAsync(
+            "/api/v1/codegate/rules");
+        var mcpEvents = await client.GetAsync(
+            "/api/v1/agents/mcp-events");
+        var mcpSummary = await client.GetAsync(
+            "/api/v1/agents/mcp-summary");
         var unauthenticatedWrite = await client.PostAsJsonAsync(
             "/api/actions/scan",
             new ScanRequest("quick"));
@@ -71,6 +79,13 @@ public sealed class EndpointContractTests : IDisposable
                 "const apiKey = \"12345678901234567890\";",
                 "contract",
                 "sample.js"));
+        var unauthenticatedMcp = await client.PostAsJsonAsync(
+            "/api/v1/agents/mcp-events",
+            new McpToolCallRequest(
+                "claude-code",
+                "terminal",
+                "execute_command",
+                "{}"));
 
         Assert.Equal(HttpStatusCode.OK, session.StatusCode);
         Assert.Equal(HttpStatusCode.OK, database.StatusCode);
@@ -79,10 +94,17 @@ public sealed class EndpointContractTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, scheduler.StatusCode);
         Assert.Equal(HttpStatusCode.OK, insiderRisk.StatusCode);
         Assert.Equal(HttpStatusCode.OK, personalProtection.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, egressRules.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, codeGateRules.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, mcpEvents.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, mcpSummary.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, unauthenticatedWrite.StatusCode);
         Assert.Equal(
             HttpStatusCode.Unauthorized,
             unauthenticatedCodeGate.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Unauthorized,
+            unauthenticatedMcp.StatusCode);
     }
 
     [Fact]
@@ -164,6 +186,38 @@ public sealed class EndpointContractTests : IDisposable
         Assert.NotNull(result);
         Assert.Equal("block", result.Verdict);
         Assert.True(result.RiskScore >= 80);
+    }
+
+    [Fact]
+    public async Task AuthenticatedMcpToolCallEvaluatesAndReturnsBlock()
+    {
+        using var baseFactory = new WebApplicationFactory<Program>();
+        using var factory = baseFactory.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<ILocalSessionService>();
+                services.AddSingleton<ILocalSessionService, TestAdministratorSession>();
+            }));
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add(
+            "X-RoamSentinel-CSRF",
+            "test-csrf");
+
+        var response = await client.PostAsJsonAsync(
+            "/api/v1/agents/mcp-events",
+            new McpToolCallRequest(
+                "claude-code",
+                "terminal",
+                "execute_command",
+                """{"command":"rm -rf /var/data"}"""));
+        var result = await response.Content
+            .ReadFromJsonAsync<McpToolCallEventDto>();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotNull(result);
+        Assert.Equal("Block", result.Verdict);
+        Assert.Equal(90, result.RiskScore);
+        Assert.Equal("claude-code", result.AgentKey);
     }
 
     [Fact]

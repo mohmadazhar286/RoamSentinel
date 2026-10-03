@@ -47,7 +47,10 @@ public sealed class DatabaseStatusRepository(
         "codegate_git_pushes",
         "codegate_git_push_files",
         "codegate_offline_bundles",
-        "protection_scheduler_tasks"
+        "protection_scheduler_tasks",
+        "agent_egress_rules",
+        "codegate_active_rules",
+        "mcp_tool_events"
     ];
 
     public DatabaseStatusDto GetStatus()

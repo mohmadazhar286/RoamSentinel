@@ -147,6 +147,96 @@ public sealed class DetectionEngineTests
                 item.Severity == "High");
     }
 
+    [Fact]
+    public void Evaluate_DetectsAgentSpawningSuspiciousChildProcess()
+    {
+        var rules = new[]
+        {
+            Rule(
+                "RS-AGENT-CHILD-001",
+                "AI agent spawned suspicious child process",
+                "Agent Governance",
+                "High",
+                85,
+                "T1059.001")
+        };
+        var snapshot = CreateSuspiciousSnapshot() with
+        {
+            GovernedAgents =
+            [
+                new AgentGovernanceDto(
+                    "claude-code", "Claude Code", @"C:\npm\claude.cmd", "Anthropic",
+                    "trusted", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow,
+                    true, 100, 0, 0, null, 10,
+                    "Agent is trusted.", true, true)
+            ],
+            Processes =
+            [
+                new ProcessTelemetry(
+                    100, "claude", @"C:\npm\claude.cmd", 50, 40, 1.0, 10, 5, 0,
+                    DateTimeOffset.UtcNow, 0, "", "claude"),
+                new ProcessTelemetry(
+                    101, "powershell", @"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+                    30, 25, 2.0, 10, 4, 0, DateTimeOffset.UtcNow,
+                    100, "claude", "powershell.exe -enc SQBFAFgA..."),
+                new ProcessTelemetry(
+                    102, "git", @"C:\Program Files\Git\bin\git.exe",
+                    20, 15, 0.5, 5, 2, 0, DateTimeOffset.UtcNow,
+                    100, "claude", "git status")
+            ]
+        };
+
+        var result = CreateEngine(rules).Evaluate(snapshot, new AgentPolicy());
+
+        var finding = Assert.Single(result.Findings);
+        Assert.Equal("RS-AGENT-CHILD-001", finding.RuleId);
+        Assert.Equal("High", finding.Severity);
+        Assert.Equal("process", finding.EntityType);
+        Assert.Equal("101", finding.EntityId);
+        Assert.Contains("Claude Code", finding.Evidence);
+        Assert.Contains("powershell", finding.Evidence);
+    }
+
+    [Fact]
+    public void Evaluate_DetectsAgentChildProcessDefenseImpairment()
+    {
+        var rules = new[]
+        {
+            Rule(
+                "RS-AGENT-CHILD-001",
+                "AI agent spawned suspicious child process",
+                "Agent Governance",
+                "High",
+                85,
+                "T1204.002")
+        };
+        var snapshot = CreateSuspiciousSnapshot() with
+        {
+            GovernedAgents =
+            [
+                new AgentGovernanceDto(
+                    "antigravity", "Google Antigravity", @"C:\Tools\agy.exe", "Google",
+                    "trusted", DateTimeOffset.UtcNow, DateTimeOffset.UtcNow,
+                    true, 200, 0, 0, null, 10,
+                    "Agent is trusted.", true, true)
+            ],
+            Processes =
+            [
+                new ProcessTelemetry(
+                    201, "cmd", @"C:\Windows\System32\cmd.exe",
+                    15, 10, 0.5, 5, 2, 0, DateTimeOffset.UtcNow,
+                    200, "agy", "cmd.exe /c sc stop WinDefend")
+            ]
+        };
+
+        var result = CreateEngine(rules).Evaluate(snapshot, new AgentPolicy());
+
+        var finding = Assert.Single(result.Findings);
+        Assert.Equal("RS-AGENT-CHILD-001", finding.RuleId);
+        Assert.Equal("201", finding.EntityId);
+        Assert.Contains("sc stop WinDefend", finding.Evidence);
+    }
+
     [Theory]
     [InlineData(19, "Info")]
     [InlineData(20, "Low")]

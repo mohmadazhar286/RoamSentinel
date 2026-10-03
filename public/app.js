@@ -13,7 +13,10 @@ const state = {
   mitreTechniques: [],
   codeGateSubmissions: [],
   codeGateGitPushes: [],
-  codeGateBundles: []
+  codeGateBundles: [],
+  codeGateRules: [],
+  agentEgressRules: [],
+  mcpEvents: []
 };
 
 const mode = new URLSearchParams(window.location.search).get("mode");
@@ -152,6 +155,7 @@ const els = {
   codeGateSubmissionsBody: document.querySelector("#codeGateSubmissionsBody"),
   codeGateGitPushesBody: document.querySelector("#codeGateGitPushesBody"),
   codeGateBundlesBody: document.querySelector("#codeGateBundlesBody"),
+  codeGateRulesBody: document.querySelector("#codeGateRulesBody"),
   codeGateVerdictFilter: document.querySelector("#codeGateVerdictFilter"),
   codeGateRepositoryFilter: document.querySelector("#codeGateRepositoryFilter"),
   codeGateActorFilter: document.querySelector("#codeGateActorFilter"),
@@ -167,6 +171,12 @@ const els = {
   schedulerBody: document.querySelector("#schedulerBody"),
   schedulerSummary: document.querySelector("#schedulerSummary"),
   agentsBody: document.querySelector("#agentsBody"),
+  agentEgressRulesBody: document.querySelector("#agentEgressRulesBody"),
+  mcpTotalCount: document.querySelector("#mcpTotalCount"),
+  mcpBlockedCount: document.querySelector("#mcpBlockedCount"),
+  mcpWarnedCount: document.querySelector("#mcpWarnedCount"),
+  mcpToolCount: document.querySelector("#mcpToolCount"),
+  mcpEventsBody: document.querySelector("#mcpEventsBody"),
   threatProvidersBody: document.querySelector("#threatProvidersBody"),
   threatIndicatorsBody: document.querySelector("#threatIndicatorsBody"),
   threatLookupResult: document.querySelector("#threatLookupResult"),
@@ -406,20 +416,23 @@ async function refreshView(view) {
       insiderRisk,
       codeGateSubmissions,
       codeGateGitPushes,
-      codeGateBundles
+      codeGateBundles,
+      codeGateRules
     ] = await Promise.all([
       getJson("/api/modules"),
       getJson("/api/modules/insider-risk"),
       getJson("/api/v1/codegate/submissions?limit=25"),
       getJson("/api/v1/codegate/git-pushes?limit=25"),
-      getJson("/api/v1/codegate/offline-bundles?limit=25")
+      getJson("/api/v1/codegate/offline-bundles?limit=25"),
+      getJson("/api/v1/codegate/rules")
     ]);
     renderComponents(
       modules,
       insiderRisk,
       codeGateSubmissions,
       codeGateGitPushes,
-      codeGateBundles);
+      codeGateBundles,
+      codeGateRules);
   }
   if (view === "mobileDevices") renderMobileDevices(await getJson("/api/dashboard/mobile-devices"));
   if (view === "appActivity") renderAppActivity(await getJson("/api/dashboard/app-activity"));
@@ -451,7 +464,14 @@ async function refreshView(view) {
     renderStartup(startup);
     renderScheduledTasks(scheduledTasks);
   }
-  if (view === "agents") renderAgents(await getJson("/api/dashboard/ai-agent-governance"));
+  if (view === "agents") {
+    const [agentView, egressRules, mcpSummary] = await Promise.all([
+      getJson("/api/dashboard/ai-agent-governance"),
+      getJson("/api/v1/agents/egress-rules"),
+      getJson("/api/v1/agents/mcp-summary")
+    ]);
+    renderAgents(agentView, egressRules, mcpSummary);
+  }
   if (view === "threatIntel") renderThreatIntel(await getJson("/api/dashboard/threat-intel"));
   if (view === "responseHistory") renderResponseHistory(await getJson("/api/dashboard/response-history"));
   if (view === "auditLog") renderAuditLog(await getJson("/api/dashboard/audit-log"));
@@ -470,7 +490,8 @@ function renderComponents(
   insiderRisk,
   codeGateSubmissions = [],
   codeGateGitPushes = [],
-  codeGateBundles = []) {
+  codeGateBundles = [],
+  codeGateRules = []) {
   els.modulesBody.innerHTML = rowsOrEmpty(modules || [], 4, (module) => `
     <tr>
       <td><strong>${escapeHtml(module.name)}</strong><br><span class="muted">${escapeHtml(module.id)}</span></td>
@@ -490,6 +511,7 @@ function renderComponents(
   state.codeGateSubmissions = codeGateSubmissions || [];
   state.codeGateGitPushes = codeGateGitPushes || [];
   state.codeGateBundles = codeGateBundles || [];
+  state.codeGateRules = codeGateRules || [];
   renderCodeGateAuditTables();
 }
 
@@ -545,6 +567,21 @@ function renderCodeGateAuditTables() {
         <td>${formatTime(bundle.generatedAt)}</td>
         <td><span class="risk ${bundle.verified ? "low" : "medium"}">${escapeHtml(bundle.status)}</span></td>
       </tr>`);
+  if (els.codeGateRulesBody) {
+    els.codeGateRulesBody.innerHTML = rowsOrEmpty(
+      state.codeGateRules || [],
+      7,
+      (rule) => `
+        <tr>
+          <td><code>${escapeHtml(rule.ruleId)}</code></td>
+          <td><strong>${escapeHtml(rule.name)}</strong></td>
+          <td><span class="risk ${riskClass(rule.riskScore)}">${escapeHtml(rule.severity)}</span></td>
+          <td>${rule.riskScore}</td>
+          <td><code>${escapeHtml(rule.pattern)}</code></td>
+          <td class="detail">${escapeHtml(rule.explanation)}</td>
+          <td><span class="risk ${rule.enabled ? "low" : "medium"}">${rule.enabled ? "Active" : "Disabled"}</span></td>
+        </tr>`);
+  }
   els.codeGateSubmissionsBody.querySelectorAll("[data-codegate-submission]").forEach((button) => {
     button.addEventListener("click", () => loadCodeGateSubmissionDetail(button.dataset.codegateSubmission));
   });
@@ -1348,9 +1385,13 @@ function bindKillButtons(scope) {
   });
 }
 
-function renderAgents(view) {
+function renderAgents(view, egressRules = [], mcpSummary = {}) {
   const rows = view.agents || [];
-  els.agentsBody.innerHTML = rowsOrEmpty(rows, 10, (agent) => `
+  const blockedPaths = new Set((egressRules || []).map(r => (r.executablePath || "").toLowerCase()));
+
+  els.agentsBody.innerHTML = rowsOrEmpty(rows, 10, (agent) => {
+    const isEgressBlocked = blockedPaths.has((agent.executablePath || "").toLowerCase());
+    return `
     <tr>
       <td><span class="risk ${agent.status === "blocked" ? "critical" : agent.status === "trusted" ? "low" : riskClass(agent.riskScore)}">${escapeHtml(agent.status)}</span></td>
       <td>${escapeHtml(agent.name)}${agent.isRunning ? `<br><span class="muted">Running - PID ${agent.processId ?? "-"}</span>` : `<br><span class="muted">Not running</span>`}</td>
@@ -1368,11 +1409,48 @@ function renderAgents(view) {
               : ""}
              ${agent.status !== "blocked"
               ? `<button class="mini-button" type="button" data-block-agent="${escapeHtml(agent.executablePath || "")}">Block</button>`
-              : `<button class="mini-button allow" type="button" data-unblock-agent="${escapeHtml(agent.executablePath || "")}">Restore</button>`}`
+              : `<button class="mini-button allow" type="button" data-unblock-agent="${escapeHtml(agent.executablePath || "")}">Restore</button>`}
+             ${!isEgressBlocked
+              ? `<button class="mini-button" type="button" data-block-egress="${escapeHtml(agent.executablePath || "")}" data-agent-key="${escapeHtml(agent.agentKey || "")}">Isolate Egress</button>`
+              : `<button class="mini-button allow" type="button" data-unblock-egress="${escapeHtml(agent.executablePath || "")}">Restore Egress</button>`}`
           : `<span class="muted">Shared host<br>Review only</span>`}
       </td>
-    </tr>
-  `);
+    </tr>`;
+  });
+
+  if (els.agentEgressRulesBody) {
+    els.agentEgressRulesBody.innerHTML = rowsOrEmpty(egressRules || [], 7, (rule) => `
+      <tr>
+        <td><code>${escapeHtml(rule.agentKey)}</code></td>
+        <td class="path">${escapeHtml(rule.executablePath)}</td>
+        <td>${escapeHtml(rule.direction)}</td>
+        <td><span class="risk critical">${escapeHtml(rule.action)}</span></td>
+        <td>${formatTime(rule.createdAt)}</td>
+        <td>${escapeHtml(rule.createdBy)}</td>
+        <td><button class="mini-button allow" type="button" data-unblock-egress="${escapeHtml(rule.executablePath)}">Restore Egress</button></td>
+      </tr>
+    `);
+  }
+
+  if (els.mcpTotalCount) els.mcpTotalCount.textContent = mcpSummary?.totalCount ?? 0;
+  if (els.mcpBlockedCount) els.mcpBlockedCount.textContent = mcpSummary?.blockedCount ?? 0;
+  if (els.mcpWarnedCount) els.mcpWarnedCount.textContent = mcpSummary?.warnedCount ?? 0;
+  if (els.mcpToolCount) els.mcpToolCount.textContent = (mcpSummary?.distinctTools || []).length;
+
+  if (els.mcpEventsBody) {
+    els.mcpEventsBody.innerHTML = rowsOrEmpty(mcpSummary?.recentEvents || [], 8, (evt) => `
+      <tr>
+        <td>${formatTime(evt.timestamp)}</td>
+        <td><code>${escapeHtml(evt.agentKey)}</code></td>
+        <td>${escapeHtml(evt.serverName)}</td>
+        <td><strong>${escapeHtml(evt.toolName)}</strong></td>
+        <td><span class="risk ${evt.verdict === "Block" ? "critical" : evt.verdict === "Warn" ? "medium" : "low"}">${escapeHtml(evt.verdict)}</span></td>
+        <td><span class="risk ${riskClass(evt.riskScore)}">${evt.riskScore}</span></td>
+        <td class="detail">${escapeHtml(evt.policyReason)}</td>
+        <td class="detail"><code>${escapeHtml(evt.argumentsJson || "")}</code></td>
+      </tr>
+    `);
+  }
 
   els.agentsBody.querySelectorAll("[data-authorize]").forEach((button) => {
     button.addEventListener("click", () => updateAgentPolicy("/api/actions/authorize-agent", button.dataset.authorize, "authorize"));
@@ -1383,6 +1461,17 @@ function renderAgents(view) {
   els.agentsBody.querySelectorAll("[data-unblock-agent]").forEach((button) => {
     button.addEventListener("click", () => restoreAgent(button.dataset.unblockAgent));
   });
+  els.agentsBody.querySelectorAll("[data-block-egress]").forEach((button) => {
+    button.addEventListener("click", () => blockAgentEgress(button.dataset.blockEgress, button.dataset.agentKey));
+  });
+  els.agentsBody.querySelectorAll("[data-unblock-egress]").forEach((button) => {
+    button.addEventListener("click", () => unblockAgentEgress(button.dataset.unblockEgress));
+  });
+  if (els.agentEgressRulesBody) {
+    els.agentEgressRulesBody.querySelectorAll("[data-unblock-egress]").forEach((button) => {
+      button.addEventListener("click", () => unblockAgentEgress(button.dataset.unblockEgress));
+    });
+  }
 }
 
 function renderPolicies(review) {
@@ -1609,7 +1698,8 @@ async function scanCodeGate(event) {
     await getJson("/api/modules/insider-risk"),
     await getJson("/api/v1/codegate/submissions?limit=25"),
     await getJson("/api/v1/codegate/git-pushes?limit=25"),
-    await getJson("/api/v1/codegate/offline-bundles?limit=25"));
+    await getJson("/api/v1/codegate/offline-bundles?limit=25"),
+    await getJson("/api/v1/codegate/rules"));
 }
 
 async function exportCodeGateReport(report) {
@@ -1822,6 +1912,22 @@ async function restoreAgent(path) {
   if (!confirm(`Remove RoamSentinel's agent block for this executable?\n\n${path}`)) return;
   const result = await postJson("/api/actions/unblock-agent", { path });
   setMessage(result.ok ? "Agent block restored." : result.error, !result.ok);
+  refreshAll();
+}
+
+async function blockAgentEgress(path, agentKey) {
+  if (!path) return setMessage("Agent path is unavailable.", true);
+  if (!confirm(`Isolate outbound and inbound network access via Windows Firewall for ${agentKey || "this agent"}?\n\n${path}`)) return;
+  const result = await postJson("/api/actions/block-agent-egress", { path });
+  setMessage(result.ok ? (result.output || "Agent egress network isolated.") : result.error, !result.ok);
+  refreshAll();
+}
+
+async function unblockAgentEgress(path) {
+  if (!path) return setMessage("Agent path is unavailable.", true);
+  if (!confirm(`Restore network access via Windows Firewall for this agent?\n\n${path}`)) return;
+  const result = await postJson("/api/actions/unblock-agent-egress", { path });
+  setMessage(result.ok ? (result.output || "Agent network access restored.") : result.error, !result.ok);
   refreshAll();
 }
 
