@@ -32,3 +32,19 @@ coverage.*
 .env
 .env.*
 !.env.example
+
+# ---- devhub baseline (secrets & local state; do not remove) ----
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.pem
+key.properties
+local.properties
+service-account*.json
+.devhub-local/
+# ---- end devhub baseline ----
