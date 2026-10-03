@@ -2,6 +2,7 @@ using RoamSentinel.AgentGovernance;
 using RoamSentinel.AppActivity;
 using RoamSentinel.App;
 using RoamSentinel.App.Api;
+using RoamSentinel.App.DevOps;
 using RoamSentinel.App.Infrastructure;
 using RoamSentinel.App.Modules;
 using RoamSentinel.App.Queries;
@@ -127,6 +128,7 @@ builder.Services.AddSingleton<ISystemSettingsRepository, SystemSettingsRepositor
 builder.Services.AddSingleton<
     IProtectionSchedulerRepository,
     ProtectionSchedulerRepository>();
+builder.Services.AddSingleton<IDevHubStatusService, DevHubStatusService>();
 builder.Services.AddSingleton<IBackupExportService, BackupExportService>();
 builder.Services.AddSingleton<IEventLogService, EventLogService>();
 builder.Services.AddSingleton<IStructuredLogService>(services =>
@@ -400,6 +402,7 @@ app.MapBackupEndpoints();
 app.MapModuleEndpoints();
 app.MapDeviceIntegrityEndpoints();
 app.MapMobileBridgeEndpoints();
+app.MapDevOpsEndpoints();
 app.MapFallbackToFile("index.html");
 
 app.Run();

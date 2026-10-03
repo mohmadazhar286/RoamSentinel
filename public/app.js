@@ -33,43 +33,29 @@ let workspaceGroups = [
     id: "protect",
     defaultView: "overview",
     label: "Protect",
-    summary: "Device posture",
-    views: ["overview", "alerts", "deviceIntegrity", "malwareGuard", "processes", "connections", "appActivity"]
-  },
-  {
-    id: "codegate",
-    defaultView: "components",
-    label: "CodeGate",
-    summary: "Deployments",
-    views: ["components"]
-  },
-  {
-    id: "devices",
-    defaultView: "mobileDevices",
-    label: "Devices",
-    summary: "PC & mobile",
-    views: ["mobileDevices"]
+    summary: "Endpoint defense",
+    views: ["overview", "alerts", "deviceIntegrity", "malwareGuard", "processes", "connections"]
   },
   {
     id: "govern",
     defaultView: "agents",
     label: "Govern",
-    summary: "Agents & audit",
-    views: ["agents", "mitre", "threatIntel", "auditLog"]
+    summary: "AI & CodeGate",
+    views: ["agents", "components", "mitre", "threatIntel"]
   },
   {
-    id: "respond",
-    defaultView: "responseHistory",
-    label: "Respond",
-    summary: "History",
-    views: ["responseHistory"]
+    id: "devops",
+    defaultView: "devopsSummary",
+    label: "DevOps",
+    summary: "Fleet & sync",
+    views: ["devopsSummary", "devopsClaims", "devopsCycles"]
   },
   {
     id: "admin",
     defaultView: "settings",
     label: "Admin",
-    summary: "Policy",
-    views: ["settings", "auditLog"]
+    summary: "Audit & config",
+    views: ["settings", "responseHistory", "auditLog", "mobileDevices", "appActivity"]
   }
 ];
 
@@ -205,7 +191,18 @@ const els = {
   mitreSeverityFilter: document.querySelector("#mitreSeverityFilter"),
   mitreHostFilter: document.querySelector("#mitreHostFilter"),
   mitreEventsBody: document.querySelector("#mitreEventsBody"),
-  mitreCatalogBody: document.querySelector("#mitreCatalogBody")
+  mitreCatalogBody: document.querySelector("#mitreCatalogBody"),
+  devopsNodeId: document.querySelector("#devopsNodeId"),
+  devopsNodeRole: document.querySelector("#devopsNodeRole"),
+  devopsPushStatus: document.querySelector("#devopsPushStatus"),
+  devopsLastPush: document.querySelector("#devopsLastPush"),
+  devopsPullStatus: document.querySelector("#devopsPullStatus"),
+  devopsLastPull: document.querySelector("#devopsLastPull"),
+  devopsAppCount: document.querySelector("#devopsAppCount"),
+  devopsPushTableBody: document.querySelector("#devopsPushTableBody"),
+  devopsClaimsBody: document.querySelector("#devopsClaimsBody"),
+  devopsCyclesBody: document.querySelector("#devopsCyclesBody"),
+  devopsReportsList: document.querySelector("#devopsReportsList")
 };
 
 document.querySelector(".workspace-nav")?.addEventListener("click", (event) => {
@@ -235,6 +232,8 @@ document.querySelector("#exportCodeGateSubmissions").addEventListener("click", (
 document.querySelector("#exportCodeGateGitPushes").addEventListener("click", () => exportCodeGateReport("git-pushes"));
 document.querySelector("#exportCodeGateBundles").addEventListener("click", () => exportCodeGateReport("offline-bundles"));
 document.querySelector("#resetMitreFilters").addEventListener("click", resetMitreFilters);
+document.querySelector("#triggerPushSync")?.addEventListener("click", () => triggerDevOpsSync("push"));
+document.querySelector("#triggerPullSync")?.addEventListener("click", () => triggerDevOpsSync("pull"));
 els.createMobilePairing?.addEventListener("click", createMobilePairing);
 els.copyMobilePairingPayload?.addEventListener("click", copyMobilePairingPayload);
 [
@@ -475,6 +474,10 @@ async function refreshView(view) {
   if (view === "threatIntel") renderThreatIntel(await getJson("/api/dashboard/threat-intel"));
   if (view === "responseHistory") renderResponseHistory(await getJson("/api/dashboard/response-history"));
   if (view === "auditLog") renderAuditLog(await getJson("/api/dashboard/audit-log"));
+  if (view === "devopsSummary" || view === "devopsClaims" || view === "devopsCycles") {
+    const summary = await getJson("/api/v1/devops/summary");
+    renderDevOps(summary);
+  }
 }
 
 async function loadMitre() {
@@ -1936,6 +1939,87 @@ async function restoreIp(ipAddress) {
   if (!confirm(`Remove RoamSentinel's Windows Firewall block for ${ipAddress}?`)) return;
   const result = await postJson("/api/actions/unblock-ip", { ipAddress });
   setMessage(result.ok ? `IP block restored for ${ipAddress}.` : result.error, !result.ok);
+  refreshAll();
+}
+
+function renderDevOps(summary) {
+  if (!summary) return;
+  const node = summary.node || {};
+  const sync = summary.sync || {};
+  const claims = summary.activeClaims || [];
+  const cycles = summary.cycles || [];
+  const reports = summary.recentReports || [];
+
+  if (els.devopsNodeId) els.devopsNodeId.textContent = node.nodeId || "pc-am";
+  if (els.devopsNodeRole) els.devopsNodeRole.textContent = `${node.role || "node"} (${node.owner || "local"})`;
+  if (els.devopsPushStatus) {
+    els.devopsPushStatus.textContent = sync.pushHealthy ? "Healthy" : "Attention";
+    els.devopsPushStatus.className = sync.pushHealthy ? "risk low" : "risk critical";
+  }
+  if (els.devopsLastPush) {
+    els.devopsLastPush.textContent = sync.lastPushAt ? `Last: ${formatTime(sync.lastPushAt)}` : "No runs recorded";
+  }
+  if (els.devopsPullStatus) {
+    els.devopsPullStatus.textContent = sync.pullHealthy ? "Healthy" : "Attention";
+    els.devopsPullStatus.className = sync.pullHealthy ? "risk low" : "risk critical";
+  }
+  if (els.devopsLastPull) {
+    els.devopsLastPull.textContent = sync.lastPullAt ? `Last: ${formatTime(sync.lastPullAt)}` : "Mirroring GitHub";
+  }
+  if (els.devopsAppCount) {
+    els.devopsAppCount.textContent = sync.totalManagedRepos || 1;
+  }
+
+  if (els.devopsPushTableBody) {
+    els.devopsPushTableBody.innerHTML = rowsOrEmpty(sync.pushResults || [], 4, (repo) => `
+      <tr>
+        <td><strong>${escapeHtml(repo.name)}</strong></td>
+        <td><span class="risk ${repo.status === "pushed" ? "low" : "critical"}">${escapeHtml(repo.status)}</span></td>
+        <td class="detail">${escapeHtml(repo.message || "Pushed clean to GitHub")}</td>
+        <td>${repo.exitCode ?? 0}</td>
+      </tr>
+    `);
+  }
+
+  if (els.devopsClaimsBody) {
+    els.devopsClaimsBody.innerHTML = rowsOrEmpty(claims, 8, (c) => `
+      <tr>
+        <td><code>${escapeHtml(c.id)}</code></td>
+        <td><strong>${escapeHtml(c.app)}</strong></td>
+        <td>${escapeHtml(c.agent)}</td>
+        <td class="detail">${escapeHtml(c.task)}</td>
+        <td><code>${escapeHtml(c.branch)}</code></td>
+        <td class="detail">${(c.scope || []).map(escapeHtml).join("<br>")}</td>
+        <td>${formatTime(c.leaseUntil)}</td>
+        <td><span class="risk ${c.status === "active" ? "medium" : "low"}">${escapeHtml(c.status)}</span></td>
+      </tr>
+    `);
+  }
+
+  if (els.devopsCyclesBody) {
+    els.devopsCyclesBody.innerHTML = rowsOrEmpty(cycles, 6, (cy) => `
+      <tr>
+        <td><code>${escapeHtml(cy.id)}</code></td>
+        <td><strong>${escapeHtml(cy.name)}</strong></td>
+        <td><code>${escapeHtml(cy.branch)}</code></td>
+        <td>${escapeHtml(cy.startVersion)}</td>
+        <td>${escapeHtml(cy.plannedEnd)}</td>
+        <td class="detail">${(cy.goals || []).map(escapeHtml).join("<br>")}</td>
+      </tr>
+    `);
+  }
+
+  if (els.devopsReportsList) {
+    els.devopsReportsList.innerHTML = reports.length
+      ? reports.map((r) => `<li><strong>${escapeHtml(r)}</strong> — <code>C:\\dev\\reports\\daily\\${escapeHtml(r)}\\_global.md</code></li>`).join("")
+      : '<li class="muted">No daily reports recorded yet.</li>';
+  }
+}
+
+async function triggerDevOpsSync(action) {
+  if (!confirm(`Run DevHub ${action.toUpperCase()} sync now?`)) return;
+  const result = await postJson("/api/v1/devops/sync", { action });
+  setMessage(result.ok ? (result.output || `DevHub ${action} sync launched.`) : result.error, !result.ok);
   refreshAll();
 }
 

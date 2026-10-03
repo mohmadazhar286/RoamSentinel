@@ -70,6 +70,8 @@ public sealed class EndpointContractTests : IDisposable
             "/api/v1/agents/mcp-events");
         var mcpSummary = await client.GetAsync(
             "/api/v1/agents/mcp-summary");
+        var devopsSummary = await client.GetAsync(
+            "/api/v1/devops/summary");
         var unauthenticatedWrite = await client.PostAsJsonAsync(
             "/api/actions/scan",
             new ScanRequest("quick"));
@@ -98,6 +100,7 @@ public sealed class EndpointContractTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, codeGateRules.StatusCode);
         Assert.Equal(HttpStatusCode.OK, mcpEvents.StatusCode);
         Assert.Equal(HttpStatusCode.OK, mcpSummary.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, devopsSummary.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, unauthenticatedWrite.StatusCode);
         Assert.Equal(
             HttpStatusCode.Unauthorized,

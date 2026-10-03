@@ -1031,4 +1031,58 @@ public sealed record McpAuditSummaryDto(
     IReadOnlyList<string> DistinctTools,
     IReadOnlyList<McpToolCallEventDto> RecentEvents);
 
+public sealed record DevHubNodeInfoDto(
+    string NodeId,
+    string Role,
+    string Owner,
+    string TzOffset);
+
+public sealed record DevHubSyncRepoResultDto(
+    string Name,
+    string Status,
+    string? Message = null,
+    int? ExitCode = null);
+
+public sealed record DevHubSyncStatusDto(
+    DateTimeOffset? LastPushAt,
+    bool PushHealthy,
+    IReadOnlyList<DevHubSyncRepoResultDto> PushResults,
+    DateTimeOffset? LastPullAt,
+    bool PullHealthy,
+    int TotalManagedRepos);
+
+public sealed record DevHubClaimDto(
+    string Id,
+    string App,
+    string Agent,
+    string Task,
+    IReadOnlyList<string> Scope,
+    string Status,
+    string Branch,
+    string Base,
+    string Worktree,
+    DateTimeOffset Created,
+    DateTimeOffset LeaseUntil,
+    string? Cycle = null,
+    string? Notes = null);
+
+public sealed record DevHubCycleDto(
+    string Id,
+    string Name,
+    IReadOnlyList<string> Goals,
+    DateTimeOffset Start,
+    string PlannedEnd,
+    string Branch,
+    string StartVersion,
+    bool Closed);
+
+public sealed record DevHubSummaryDto(
+    DateTimeOffset GeneratedAt,
+    DevHubNodeInfoDto Node,
+    DevHubSyncStatusDto Sync,
+    IReadOnlyList<DevHubClaimDto> ActiveClaims,
+    IReadOnlyList<DevHubCycleDto> Cycles,
+    IReadOnlyList<string> RecentReports);
+
+
 

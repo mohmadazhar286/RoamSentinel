@@ -101,42 +101,37 @@
         <nav class="workspace-nav" aria-label="Module workspaces">
           <button class="workspace-tab active" data-workspace="protect" type="button">
             <span>Protect</span>
-            <small>Device posture</small>
-          </button>
-          <button class="workspace-tab" data-workspace="codegate" type="button">
-            <span>CodeGate</span>
-            <small>Deployments</small>
-          </button>
-          <button class="workspace-tab" data-workspace="devices" type="button">
-            <span>Devices</span>
-            <small>PC & mobile</small>
+            <small>Endpoint defense</small>
           </button>
           <button class="workspace-tab" data-workspace="govern" type="button">
             <span>Govern</span>
-            <small>Agents & audit</small>
+            <small>AI & CodeGate</small>
           </button>
-          <button class="workspace-tab" data-workspace="respond" type="button">
-            <span>Respond</span>
-            <small>History</small>
+          <button class="workspace-tab" data-workspace="devops" type="button">
+            <span>DevOps</span>
+            <small>Fleet & sync</small>
           </button>
           <button class="workspace-tab" data-workspace="admin" type="button">
             <span>Admin</span>
-            <small>Policy</small>
+            <small>Audit & config</small>
           </button>
         </nav>
         <nav class="tabs" aria-label="Workspace views">
-          <button class="tab active" data-view="overview" type="button">Protection Overview</button>
-          <button class="tab" data-view="deviceIntegrity" type="button" hidden>Device Integrity</button>
-          <button class="tab" data-view="mobileDevices" type="button" hidden>Devices</button>
-          <button class="tab" data-view="appActivity" type="button" hidden>App Data Activity</button>
-          <button class="tab" data-view="malwareGuard" type="button" hidden>Malware Protection</button>
-          <button class="tab" data-view="components" type="button" hidden>Components</button>
-          <button class="tab" data-view="processes" type="button" hidden>Live Processes</button>
-          <button class="tab" data-view="connections" type="button" hidden>Outbound Activity</button>
+          <button class="tab active" data-view="overview" type="button">Posture Overview</button>
           <button class="tab" data-view="alerts" type="button" hidden>Alerts</button>
+          <button class="tab" data-view="deviceIntegrity" type="button" hidden>Device Integrity</button>
+          <button class="tab" data-view="malwareGuard" type="button" hidden>Malware Defense</button>
+          <button class="tab" data-view="processes" type="button" hidden>Live Processes</button>
+          <button class="tab" data-view="connections" type="button" hidden>Outbound Flows</button>
+          <button class="tab" data-view="agents" type="button" hidden>AI Agent Governance</button>
+          <button class="tab" data-view="components" type="button" hidden>CodeGate & Supply Chain</button>
           <button class="tab" data-view="mitre" type="button" hidden>MITRE ATT&amp;CK</button>
-          <button class="tab" data-view="agents" type="button" hidden>App/Agent Access</button>
           <button class="tab" data-view="threatIntel" type="button" hidden>Threat Intel</button>
+          <button class="tab" data-view="mobileDevices" type="button" hidden>Companion Devices</button>
+          <button class="tab" data-view="appActivity" type="button" hidden>App Activity</button>
+          <button class="tab" data-view="devopsSummary" type="button" hidden>Sync Pulse & Fleet</button>
+          <button class="tab" data-view="devopsClaims" type="button" hidden>Active Worktrees</button>
+          <button class="tab" data-view="devopsCycles" type="button" hidden>Cycles & Reports</button>
           <button class="tab" data-view="responseHistory" type="button" hidden>Response History</button>
           <button class="tab" data-view="settings" type="button" hidden>Settings</button>
           <button class="tab" data-view="auditLog" type="button" hidden>Audit Log</button>
@@ -762,6 +757,80 @@
               <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Entity</th><th>Result</th><th>Detail</th></tr></thead>
               <tbody id="auditLogBody"></tbody>
             </table>
+          </div>
+        </div>
+
+        <div id="devopsSummary" class="view">
+          <div class="view-toolbar">
+            <h2>DevHub Node &amp; Multi-Machine Sync Pulse</h2>
+            <div class="button-row">
+              <button id="triggerPushSync" class="mini-button" type="button">Push Sync Now</button>
+              <button id="triggerPullSync" class="mini-button" type="button">Pull Sync Now</button>
+            </div>
+          </div>
+          <div class="kpi-grid">
+            <article class="metric">
+              <span>Node identity</span>
+              <strong id="devopsNodeId">pc-am</strong>
+              <small id="devopsNodeRole">secondary-dev</small>
+            </article>
+            <article class="metric">
+              <span>Push sync (GitHub)</span>
+              <strong id="devopsPushStatus">Checking...</strong>
+              <small id="devopsLastPush">Waiting</small>
+            </article>
+            <article class="metric">
+              <span>Pull sync (From Hub)</span>
+              <strong id="devopsPullStatus">Checking...</strong>
+              <small id="devopsLastPull">Waiting</small>
+            </article>
+            <article class="metric">
+              <span>Managed apps</span>
+              <strong id="devopsAppCount">1</strong>
+              <small>In local registry</small>
+            </article>
+          </div>
+          <div class="view-toolbar">
+            <h2>Source-of-Truth Push Sync Results</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Repository</th><th>Sync status</th><th>Detail</th><th>Exit code</th></tr></thead>
+              <tbody id="devopsPushTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="devopsClaims" class="view">
+          <div class="view-toolbar">
+            <h2>Active Agent Worktrees &amp; Scoped Claims</h2>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Claim ID</th><th>App</th><th>Agent</th><th>Task</th><th>Branch</th><th>Scope</th><th>Lease until</th><th>Status</th></tr></thead>
+              <tbody id="devopsClaimsBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="devopsCycles" class="view">
+          <div class="view-toolbar">
+            <h2>Development Cycles &amp; Daily Markdown Reports</h2>
+          </div>
+          <div class="split-view">
+            <section>
+              <h3>Cycles</h3>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>Cycle</th><th>Name</th><th>Branch</th><th>Start version</th><th>Target date</th><th>Goals</th></tr></thead>
+                  <tbody id="devopsCyclesBody"></tbody>
+                </table>
+              </div>
+            </section>
+            <section>
+              <h3>Recent Generated Reports</h3>
+              <ul id="devopsReportsList" class="detail-list"></ul>
+            </section>
           </div>
         </div>
       </section>

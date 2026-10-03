@@ -402,6 +402,12 @@ public interface IMcpGovernanceService
     McpAuditSummaryDto GetSummary(int recentLimit = 50);
 }
 
+public interface IDevHubStatusService
+{
+    Task<DevHubSummaryDto> GetSummaryAsync(CancellationToken cancellationToken = default);
+    Task<ActionResultDto> TriggerSyncAsync(string action, CancellationToken cancellationToken = default);
+}
+
 public interface IResponseService
 {
     Task<ActionResultDto> StartDefenderScanAsync(
