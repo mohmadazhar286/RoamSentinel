@@ -293,8 +293,9 @@ public sealed class CodeGateService(
         int offset)
     {
         var findings = new List<CodeGateFindingDto>();
+        var privateKeyHeader = "-----BEGIN " + "PRIVATE KEY-----";
         if (source.Contains(
-                "-----BEGIN PRIVATE KEY-----",
+                privateKeyHeader,
                 StringComparison.OrdinalIgnoreCase))
         {
             findings.Add(CreateFinding(
