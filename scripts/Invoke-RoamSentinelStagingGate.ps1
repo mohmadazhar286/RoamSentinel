@@ -25,13 +25,27 @@ if (-not (Test-Path -LiteralPath $RoamSentinelExe -PathType Leaf)) {
     throw "RoamSentinel executable was not found: $RoamSentinelExe"
 }
 
-$output = & $RoamSentinelExe `
-    --codegate-scan $target `
-    --source $Source `
-    --revision $Revision 2>&1
-$exitCode = $LASTEXITCODE
-if ($exitCode -ne 0) {
-    throw "CodeGate scan failed with exit code $exitCode. $($output -join [Environment]::NewLine)"
+$origProgramData = $env:ROAMSENTINEL_PROGRAMDATA
+try {
+    $stagingProgramData = Join-Path $env:TEMP "RoamSentinel-StagingGate"
+    New-Item -ItemType Directory -Path $stagingProgramData -Force | Out-Null
+    $env:ROAMSENTINEL_PROGRAMDATA = $stagingProgramData
+
+    $output = & $RoamSentinelExe `
+        --codegate-scan $target `
+        --source $Source `
+        --revision $Revision 2>&1
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        throw "CodeGate scan failed with exit code $exitCode. $($output -join [Environment]::NewLine)"
+    }
+}
+finally {
+    if ($null -ne $origProgramData) {
+        $env:ROAMSENTINEL_PROGRAMDATA = $origProgramData
+    } else {
+        Remove-Item Env:\ROAMSENTINEL_PROGRAMDATA -ErrorAction SilentlyContinue
+    }
 }
 
 $summary = ($output | Where-Object { $_ -match "^CodeGate verdict=" } | Select-Object -First 1)
