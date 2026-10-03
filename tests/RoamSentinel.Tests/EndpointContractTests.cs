@@ -262,8 +262,12 @@ public sealed class EndpointContractTests : IDisposable
                 workspace.Views.Contains("overview"));
         Assert.Contains(
             manifest.Workspaces,
-            workspace => workspace.Id == "codegate" &&
-                workspace.DefaultView == "components");
+            workspace => workspace.Id == "govern" &&
+                workspace.DefaultView == "agents");
+        Assert.Contains(
+            manifest.Workspaces,
+            workspace => workspace.Id == "devops" &&
+                workspace.DefaultView == "devopsSummary");
         Assert.Contains(
             manifest.Modules,
             module => module.ModuleId == "rs-codegate" &&

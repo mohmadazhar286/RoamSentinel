@@ -246,6 +246,14 @@ h2 {
   align-items: start;
 }
 
+.workbench.workspace-full-width {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.workbench.workspace-full-width .side {
+  display: none;
+}
+
 .panel {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -380,7 +388,45 @@ textarea {
 .brand-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.module-selector-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: clamp(12px, 2vw, 24px);
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-soft);
+}
+
+.selector-label {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.module-dropdown {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  outline: none;
+}
+
+.module-dropdown:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
 .rs-logo {

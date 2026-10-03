@@ -112,50 +112,51 @@ public sealed class ModuleExperienceService(
                 ["components", "auditLog"],
                 ["/api/modules/insider-risk", "/api/dashboard/audit-log"],
                 [],
-                "User and device risk scoring foundation for future insider-risk workflows.")
+                "User and device risk scoring foundation for future insider-risk workflows."),
+            Experience(
+                registrations,
+                "rs-devops",
+                "DevOps Fleet & Sync",
+                "RS Fleet",
+                "devops",
+                "devopsSummary",
+                ["devopsSummary", "devopsClaims", "devopsCycles"],
+                ["/api/v1/devops/summary"],
+                ["/api/v1/devops/sync"],
+                "Multi-machine Git synchronization pulse, active agent claims, and development cycles.")
         ];
 
     private static IReadOnlyList<ModuleWorkspaceDto> BuildWorkspaces(
         IReadOnlyList<ModuleExperienceDto> experiences) =>
         [
-            Workspace(
-                "protect",
-                "Protect",
-                "Device posture, app activity, malware protection, network, and findings.",
-                "overview",
-                experiences),
-            Workspace(
-                "codegate",
-                "CodeGate",
-                "Deployment, Git push, staged code, and package trust review.",
-                "components",
-                experiences),
-            Workspace(
-                "devices",
-                "Devices",
-                "PC integrity and companion/mobile device posture.",
-                "mobileDevices",
-                experiences),
-            Workspace(
-                "govern",
-                "Govern",
-                "Agents, insider-risk foundations, audit, policy, and administration.",
-                "agents",
-                experiences),
             new(
-                "respond",
-                "Respond",
-                "Operator-approved response evidence and recovery history.",
-                "responseHistory",
-                [],
-                ["responseHistory"]),
+                "protect",
+                "Protect (Device Shield)",
+                "Host antivirus, device integrity, processes, network flows, and alerts.",
+                "overview",
+                experiences.Where(e => e.Workspace == "protect" || e.Workspace == "devices").Select(e => e.ModuleId).Distinct().ToList(),
+                ["overview", "alerts", "deviceIntegrity", "malwareGuard", "processes", "connections"]),
+            new(
+                "govern",
+                "Govern (AI & CodeGate)",
+                "AI agent governance, MCP policy inspection, and pre-trust CodeGate intake.",
+                "agents",
+                experiences.Where(e => e.Workspace == "govern" || e.Workspace == "codegate").Select(e => e.ModuleId).Distinct().ToList(),
+                ["agents", "components", "mitre", "threatIntel"]),
+            new(
+                "devops",
+                "DevOps (Fleet & Sync)",
+                "Multi-machine push/pull sync pipeline, active agent claims, and cycles.",
+                "devopsSummary",
+                experiences.Where(e => e.Workspace == "devops").Select(e => e.ModuleId).Distinct().ToList(),
+                ["devopsSummary", "devopsClaims", "devopsCycles"]),
             new(
                 "admin",
-                "Admin",
-                "Local settings, policy, audit, and system configuration.",
+                "Admin (Audit & Config)",
+                "Policy management, response execution history, companion devices, and system audit logs.",
                 "settings",
-                [],
-                ["settings", "auditLog"])
+                experiences.Where(e => e.Workspace == "admin" || e.Workspace == "respond").Select(e => e.ModuleId).Distinct().ToList(),
+                ["settings", "responseHistory", "auditLog", "mobileDevices", "appActivity"])
         ];
 
     private static ModuleExperienceDto Experience(

@@ -295,7 +295,26 @@ function updateWorkspaceShell() {
     tab.hidden = !isVisible;
     tab.classList.toggle("active", tab.dataset.view === state.activeView);
   });
+
+  const titleEl = document.querySelector("#activeWorkspaceTitle");
+  if (titleEl) {
+    titleEl.textContent = activeGroup.label || "Device Protection Center";
+  }
+
+  const workbenchEl = document.querySelector(".workbench");
+  if (workbenchEl) {
+    workbenchEl.classList.toggle("workspace-full-width", activeGroup.id !== "protect");
+  }
+
+  const dropdown = document.querySelector("#moduleSelector");
+  if (dropdown && dropdown.value !== activeGroup.id) {
+    dropdown.value = activeGroup.id;
+  }
 }
+
+document.querySelector("#moduleSelector")?.addEventListener("change", (e) => {
+  switchWorkspace(e.target.value);
+});
 
 async function initialize() {
   await refreshSession();
@@ -339,6 +358,7 @@ function applyModuleExperienceManifest(manifest) {
     state.activeView = workspaceGroups[0].defaultView;
   }
   renderWorkspaceNav();
+  renderModuleDropdown();
   updateWorkspaceShell();
 }
 
@@ -351,6 +371,15 @@ function renderWorkspaceNav() {
       <small>${escapeHtml(workspace.summary || "")}</small>
     </button>
   `).join("");
+}
+
+function renderModuleDropdown() {
+  const dropdown = document.querySelector("#moduleSelector");
+  if (!dropdown) return;
+  dropdown.innerHTML = workspaceGroups.map((w) => `
+    <option value="${escapeHtml(w.id)}">${escapeHtml(w.label || w.id)}</option>
+  `).join("");
+  dropdown.value = state.activeWorkspace;
 }
 
 function switchView(view, options = {}) {

@@ -185,9 +185,14 @@ public sealed class ConsoleParityAndModuleTests
                 workspace.Views.Contains("overview"));
         Assert.Contains(
             manifest.Workspaces,
-            workspace => workspace.Id == "codegate" &&
+            workspace => workspace.Id == "govern" &&
                 workspace.Modules.Contains("rs-codegate") &&
-                workspace.DefaultView == "components");
+                workspace.DefaultView == "agents");
+        Assert.Contains(
+            manifest.Workspaces,
+            workspace => workspace.Id == "devops" &&
+                workspace.Modules.Contains("rs-devops") &&
+                workspace.DefaultView == "devopsSummary");
         Assert.Contains(
             manifest.Modules,
             module => module.ModuleId == "protection-scheduler" &&

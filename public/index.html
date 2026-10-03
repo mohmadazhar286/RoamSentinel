@@ -12,12 +12,21 @@
       <div class="rs-logo" aria-label="RS logo placeholder">RS</div>
       <div>
         <p class="eyebrow">RoamSentinel personal protection utility</p>
-        <h1>Device Protection Center</h1>
+        <h1 id="activeWorkspaceTitle">Device Protection Center</h1>
+      </div>
+      <div class="module-selector-box">
+        <label for="moduleSelector" class="selector-label">Active Bundle</label>
+        <select id="moduleSelector" class="module-dropdown">
+          <option value="protect">🛡️ Protect (Device Shield)</option>
+          <option value="govern">🤖 Govern (AI &amp; CodeGate)</option>
+          <option value="devops">🚀 DevOps (Fleet &amp; Sync)</option>
+          <option value="admin">⚙️ Admin (Audit &amp; Config)</option>
+        </select>
       </div>
     </div>
     <div class="status-strip">
       <span id="consoleMode" class="pill">Mode: Browser Console</span>
-        <span class="pill">Agent: Local Service</span>
+      <span class="pill">Agent: Local Service</span>
       <span id="adminState" class="pill">Admin check</span>
       <span id="updatedAt" class="muted">Waiting for telemetry</span>
       <button id="themeToggle" class="theme-toggle" type="button">Theme: System</button>
