@@ -26,7 +26,6 @@ $required = @(
     "scripts\Register-RoamSentinelMobileDevice.ps1",
     "scripts\Submit-RoamSentinelMobileHeartbeat.ps1",
     "scripts\Invoke-RoamSentinelStagingGate.ps1",
-    "scripts\Invoke-RoamSentinelReleaseGate.ps1",
     "scripts\git-hooks\pre-receive",
     "scripts\git-hooks\post-receive"
 )
